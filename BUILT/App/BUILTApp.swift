@@ -1,9 +1,11 @@
-
 import SwiftUI
 import SwiftData
 
 @main
 struct BUILTApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self)
+    private var appDelegate
+
     private let modelContainer: ModelContainer
 
     init() {

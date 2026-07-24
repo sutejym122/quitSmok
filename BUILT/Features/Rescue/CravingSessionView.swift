@@ -17,29 +17,15 @@ struct CravingSessionView: View {
     @Environment(\.modelContext)
     private var modelContext
 
-    @State private var phase:
-        Phase = .setup
-
-    @State private var intensity =
-        6.0
-
-    @State private var selectedTrigger =
-        "Stress"
-
-    @State private var selectedAction =
-        "Drink water"
-
-    @State private var secondsRemaining =
-        60
-
-    @State private var savedOutcome:
-        CravingOutcome?
-
-    @State private var showingSlipAlert =
-        false
-
-    @State private var hasSaved =
-        false
+    @State private var phase: Phase = .setup
+    @State private var intensity = 6.0
+    @State private var selectedTrigger = "Stress"
+    @State private var selectedAction = "Drink water"
+    @State private var secondsRemaining = 60
+    @State private var savedOutcome: CravingOutcome?
+    @State private var showingSlipAlert = false
+    @State private var hasSaved = false
+    @State private var didStartLiveActivity = false
 
     private let triggers = [
         "Stress",
@@ -53,30 +39,12 @@ struct CravingSessionView: View {
     ]
 
     private let actions = [
-        (
-            "Drink water",
-            "drop.fill"
-        ),
-        (
-            "Walk 5 minutes",
-            "figure.walk"
-        ),
-        (
-            "20 push-ups",
-            "figure.strengthtraining.traditional"
-        ),
-        (
-            "Chew gum",
-            "mouth.fill"
-        ),
-        (
-            "Leave the room",
-            "door.left.hand.open"
-        ),
-        (
-            "Text someone",
-            "message.fill"
-        )
+        ("Drink water", "drop.fill"),
+        ("Walk 5 minutes", "figure.walk"),
+        ("20 push-ups", "figure.strengthtraining.traditional"),
+        ("Chew gum", "mouth.fill"),
+        ("Leave the room", "door.left.hand.open"),
+        ("Text someone", "message.fill")
     ]
 
     var body: some View {
@@ -90,13 +58,10 @@ struct CravingSessionView: View {
                     switch phase {
                     case .setup:
                         setupView
-
                     case .breathe:
                         breathingView
-
                     case .action:
                         actionView
-
                     case .result:
                         resultView
                     }
@@ -107,10 +72,7 @@ struct CravingSessionView: View {
                 )
                 .transition(
                     .opacity.combined(
-                        with:
-                            .move(
-                                edge: .trailing
-                            )
+                        with: .move(edge: .trailing)
                     )
                 )
             }
@@ -131,9 +93,7 @@ struct CravingSessionView: View {
 
             while secondsRemaining > 0 {
                 do {
-                    try await Task.sleep(
-                        for: .seconds(1)
-                    )
+                    try await Task.sleep(for: .seconds(1))
                 } catch {
                     return
                 }
@@ -150,20 +110,22 @@ struct CravingSessionView: View {
                 return
             }
 
-            withAnimation {
-                phase = .action
+            moveToActionPhase()
+        }
+        .onDisappear {
+            guard didStartLiveActivity, !hasSaved else {
+                return
             }
 
-            Haptics.selection()
+            Task {
+                await LiveActivityManager.shared.cancel()
+            }
         }
         .alert(
             "Did you smoke?",
-            isPresented:
-                $showingSlipAlert
+            isPresented: $showingSlipAlert
         ) {
-            Button(
-                "Keep current counter"
-            ) {
+            Button("Keep current counter") {
                 save(
                     outcome: .smoked,
                     resetCounter: false
@@ -180,15 +142,10 @@ struct CravingSessionView: View {
                 )
             }
 
-            Button(
-                "Cancel",
-                role: .cancel
-            ) {}
+            Button("Cancel", role: .cancel) {}
         } message: {
             Text(
-                """
-                A slip does not erase your progress. Choose whether this cigarette should restart the current timer.
-                """
+                "A slip does not erase your progress. Choose whether this cigarette should restart the current timer."
             )
         }
     }
@@ -196,35 +153,28 @@ struct CravingSessionView: View {
     private var topBar: some View {
         HStack {
             Button {
-                dismiss()
+                closeSession()
             } label: {
-                Image(
-                    systemName: "xmark"
-                )
-                .font(
-                    .system(
-                        size: 15,
-                        weight: .bold
-                    )
-                )
-                .foregroundStyle(
-                    BuiltTheme.textPrimary
-                )
-                .frame(
-                    width: 42,
-                    height: 42
-                )
-                .background(
-                    .ultraThinMaterial,
-                    in: Circle()
-                )
-                .overlay {
-                    Circle()
-                        .stroke(
-                            BuiltTheme.hairline,
-                            lineWidth: 1
+                Image(systemName: "xmark")
+                    .font(
+                        .system(
+                            size: 15,
+                            weight: .bold
                         )
-                }
+                    )
+                    .foregroundStyle(BuiltTheme.textPrimary)
+                    .frame(width: 42, height: 42)
+                    .background(
+                        .ultraThinMaterial,
+                        in: Circle()
+                    )
+                    .overlay {
+                        Circle()
+                            .stroke(
+                                BuiltTheme.hairline,
+                                lineWidth: 1
+                            )
+                    }
             }
 
             Spacer()
@@ -237,17 +187,12 @@ struct CravingSessionView: View {
                     )
                 )
                 .tracking(1.7)
-                .foregroundStyle(
-                    BuiltTheme.textSecondary
-                )
+                .foregroundStyle(BuiltTheme.textSecondary)
 
             Spacer()
 
             Color.clear
-                .frame(
-                    width: 42,
-                    height: 42
-                )
+                .frame(width: 42, height: 42)
         }
         .padding(.horizontal, 20)
         .padding(.top, 8)
@@ -271,49 +216,28 @@ struct CravingSessionView: View {
                             )
                         )
                         .tracking(-1.4)
-                        .foregroundStyle(
-                            BuiltTheme.textPrimary
-                        )
+                        .foregroundStyle(BuiltTheme.textPrimary)
 
-                    Text(
-                        """
-                        You are observing a craving, not obeying it.
-                        """
-                    )
-                    .font(.system(size: 16))
-                    .foregroundStyle(
-                        BuiltTheme.textSecondary
-                    )
+                    Text("You are observing a craving, not obeying it.")
+                        .font(.system(size: 16))
+                        .foregroundStyle(BuiltTheme.textSecondary)
                 }
 
                 intensityCard
                 triggerCard
 
                 Button {
-                    phase = .breathe
-                    Haptics.selection()
+                    beginBreathingPhase()
                 } label: {
                     HStack {
-                        Text(
-                            "Begin 60-second reset"
-                        )
-
+                        Text("Begin 60-second reset")
                         Spacer()
-
-                        Image(
-                            systemName:
-                                "arrow.right"
-                        )
+                        Image(systemName: "arrow.right")
                     }
                 }
-                .buttonStyle(
-                    BuiltPrimaryButtonStyle()
-                )
+                .buttonStyle(BuiltPrimaryButtonStyle())
             }
-            .padding(
-                .horizontal,
-                20
-            )
+            .padding(.horizontal, 20)
             .padding(.top, 26)
             .padding(.bottom, 36)
         }
@@ -324,10 +248,7 @@ struct CravingSessionView: View {
             alignment: .leading,
             spacing: 18
         ) {
-            HStack(
-                alignment:
-                    .firstTextBaseline
-            ) {
+            HStack(alignment: .firstTextBaseline) {
                 Text("Intensity")
                     .font(
                         .system(
@@ -335,25 +256,19 @@ struct CravingSessionView: View {
                             weight: .semibold
                         )
                     )
-                    .foregroundStyle(
-                        BuiltTheme.textPrimary
-                    )
+                    .foregroundStyle(BuiltTheme.textPrimary)
 
                 Spacer()
 
-                Text(
-                    "\(Int(intensity))/10"
-                )
-                .font(
-                    .system(
-                        size: 28,
-                        weight: .bold,
-                        design: .rounded
+                Text("\(Int(intensity))/10")
+                    .font(
+                        .system(
+                            size: 28,
+                            weight: .bold,
+                            design: .rounded
+                        )
                     )
-                )
-                .foregroundStyle(
-                    BuiltTheme.accent
-                )
+                    .foregroundStyle(BuiltTheme.accent)
             }
 
             Slider(
@@ -365,9 +280,7 @@ struct CravingSessionView: View {
 
             HStack {
                 Text("Mild")
-
                 Spacer()
-
                 Text("Overwhelming")
             }
             .font(
@@ -376,9 +289,7 @@ struct CravingSessionView: View {
                     weight: .medium
                 )
             )
-            .foregroundStyle(
-                BuiltTheme.textSecondary
-            )
+            .foregroundStyle(BuiltTheme.textSecondary)
         }
         .builtCard()
     }
@@ -395,63 +306,40 @@ struct CravingSessionView: View {
                         weight: .semibold
                     )
                 )
-                .foregroundStyle(
-                    BuiltTheme.textPrimary
-                )
+                .foregroundStyle(BuiltTheme.textPrimary)
 
             LazyVGrid(
                 columns: [
                     GridItem(
-                        .adaptive(
-                            minimum: 96
-                        ),
+                        .adaptive(minimum: 96),
                         spacing: 10
                     )
                 ],
                 spacing: 10
             ) {
-                ForEach(
-                    triggers,
-                    id: \.self
-                ) { trigger in
+                ForEach(triggers, id: \.self) { trigger in
                     Button {
-                        selectedTrigger =
-                            trigger
-
+                        selectedTrigger = trigger
                         Haptics.selection()
                     } label: {
                         Text(trigger)
                             .font(
                                 .system(
                                     size: 13,
-                                    weight:
-                                        .semibold
+                                    weight: .semibold
                                 )
                             )
                             .foregroundStyle(
-                                selectedTrigger
-                                    == trigger
-                                ? Color.black
-                                : BuiltTheme
-                                    .textPrimary
+                                selectedTrigger == trigger
+                                    ? Color.black
+                                    : BuiltTheme.textPrimary
                             )
-                            .frame(
-                                maxWidth:
-                                    .infinity
-                            )
-                            .padding(
-                                .vertical,
-                                12
-                            )
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
                             .background(
-                                selectedTrigger
-                                    == trigger
-                                ? BuiltTheme
-                                    .accent
-                                : Color.white
-                                    .opacity(
-                                        0.07
-                                    ),
+                                selectedTrigger == trigger
+                                    ? BuiltTheme.accent
+                                    : Color.white.opacity(0.07),
                                 in: Capsule()
                             )
                     }
@@ -467,49 +355,35 @@ struct CravingSessionView: View {
             Spacer()
 
             VStack(spacing: 10) {
-                Text(
-                    "Stay with the wave."
-                )
-                .font(
-                    .system(
-                        size: 36,
-                        weight: .bold
+                Text("Stay with the wave.")
+                    .font(
+                        .system(
+                            size: 36,
+                            weight: .bold
+                        )
                     )
-                )
-                .tracking(-1)
-                .foregroundStyle(
-                    BuiltTheme.textPrimary
-                )
+                    .tracking(-1)
+                    .foregroundStyle(BuiltTheme.textPrimary)
 
-                Text(
-                    profile.identityStatement
-                )
-                .font(
-                    .system(
-                        size: 16,
-                        weight: .medium
+                Text(profile.identityStatement)
+                    .font(
+                        .system(
+                            size: 16,
+                            weight: .medium
+                        )
                     )
-                )
-                .foregroundStyle(
-                    BuiltTheme.textSecondary
-                )
-                .multilineTextAlignment(
-                    .center
-                )
-                .padding(
-                    .horizontal,
-                    26
-                )
+                    .foregroundStyle(BuiltTheme.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 26)
             }
 
             BreathingPulse(
-                secondsRemaining:
-                    secondsRemaining
+                secondsRemaining: secondsRemaining
             )
             .frame(height: 330)
 
             Button("Skip to actions") {
-                phase = .action
+                moveToActionPhase()
             }
             .font(
                 .system(
@@ -517,9 +391,7 @@ struct CravingSessionView: View {
                     weight: .semibold
                 )
             )
-            .foregroundStyle(
-                BuiltTheme.textSecondary
-            )
+            .foregroundStyle(BuiltTheme.textSecondary)
 
             Spacer()
         }
@@ -536,138 +408,90 @@ struct CravingSessionView: View {
                     alignment: .leading,
                     spacing: 12
                 ) {
-                    Text(
-                        "Replace the ritual."
-                    )
-                    .font(
-                        .system(
-                            size: 40,
-                            weight: .bold
+                    Text("Replace the ritual.")
+                        .font(
+                            .system(
+                                size: 40,
+                                weight: .bold
+                            )
                         )
-                    )
-                    .tracking(-1.3)
-                    .foregroundStyle(
-                        BuiltTheme.textPrimary
-                    )
+                        .tracking(-1.3)
+                        .foregroundStyle(BuiltTheme.textPrimary)
 
-                    Text(
-                        """
-                        Choose one action and do it immediately.
-                        """
-                    )
-                    .font(.system(size: 16))
-                    .foregroundStyle(
-                        BuiltTheme.textSecondary
-                    )
+                    Text("Choose one action and do it immediately.")
+                        .font(.system(size: 16))
+                        .foregroundStyle(BuiltTheme.textSecondary)
                 }
 
                 LazyVGrid(
                     columns: [
-                        GridItem(
-                            .flexible(),
-                            spacing: 12
-                        ),
-                        GridItem(
-                            .flexible(),
-                            spacing: 12
-                        )
+                        GridItem(.flexible(), spacing: 12),
+                        GridItem(.flexible(), spacing: 12)
                     ],
                     spacing: 12
                 ) {
-                    ForEach(
-                        actions,
-                        id: \.0
-                    ) { action in
+                    ForEach(actions, id: \.0) { action in
                         Button {
-                            selectedAction =
-                                action.0
-
+                            selectedAction = action.0
                             Haptics.selection()
                         } label: {
                             VStack(
-                                alignment:
-                                    .leading,
+                                alignment: .leading,
                                 spacing: 18
                             ) {
-                                Image(
-                                    systemName:
-                                        action.1
-                                )
-                                .font(
-                                    .system(
-                                        size: 22,
-                                        weight:
-                                            .semibold
+                                Image(systemName: action.1)
+                                    .font(
+                                        .system(
+                                            size: 22,
+                                            weight: .semibold
+                                        )
                                     )
-                                )
-                                .foregroundStyle(
-                                    selectedAction
-                                        == action.0
-                                    ? Color.black
-                                    : BuiltTheme
-                                        .accent
-                                )
+                                    .foregroundStyle(
+                                        selectedAction == action.0
+                                            ? Color.black
+                                            : BuiltTheme.accent
+                                    )
 
                                 Text(action.0)
                                     .font(
                                         .system(
                                             size: 15,
-                                            weight:
-                                                .semibold
+                                            weight: .semibold
                                         )
                                     )
                                     .foregroundStyle(
-                                        selectedAction
-                                            == action.0
-                                        ? Color.black
-                                        : BuiltTheme
-                                            .textPrimary
+                                        selectedAction == action.0
+                                            ? Color.black
+                                            : BuiltTheme.textPrimary
                                     )
                                     .frame(
-                                        maxWidth:
-                                            .infinity,
-                                        alignment:
-                                            .leading
+                                        maxWidth: .infinity,
+                                        alignment: .leading
                                     )
                             }
                             .padding(17)
                             .frame(
-                                maxWidth:
-                                    .infinity,
+                                maxWidth: .infinity,
                                 minHeight: 112,
-                                alignment:
-                                    .leading
+                                alignment: .leading
                             )
                             .background(
-                                selectedAction
-                                    == action.0
-                                ? BuiltTheme
-                                    .accent
-                                : Color.white
-                                    .opacity(
-                                        0.07
-                                    ),
-                                in:
-                                    RoundedRectangle(
-                                        cornerRadius:
-                                            20,
-                                        style:
-                                            .continuous
-                                    )
+                                selectedAction == action.0
+                                    ? BuiltTheme.accent
+                                    : Color.white.opacity(0.07),
+                                in: RoundedRectangle(
+                                    cornerRadius: 20,
+                                    style: .continuous
+                                )
                             )
                             .overlay {
                                 RoundedRectangle(
-                                    cornerRadius:
-                                        20,
-                                    style:
-                                        .continuous
+                                    cornerRadius: 20,
+                                    style: .continuous
                                 )
                                 .stroke(
-                                    BuiltTheme
-                                        .hairline,
-                                    lineWidth:
-                                        selectedAction
-                                            == action.0
+                                    BuiltTheme.hairline,
+                                    lineWidth: selectedAction == action.0
                                         ? 0
                                         : 1
                                 )
@@ -680,49 +504,28 @@ struct CravingSessionView: View {
                 VStack(spacing: 12) {
                     Button {
                         save(
-                            outcome:
-                                .defeated,
-                            resetCounter:
-                                false
+                            outcome: .defeated,
+                            resetCounter: false
                         )
                     } label: {
                         HStack {
-                            Image(
-                                systemName:
-                                    "checkmark"
-                            )
-
-                            Text(
-                                "I didn’t smoke"
-                            )
-
+                            Image(systemName: "checkmark")
+                            Text("I didn’t smoke")
                             Spacer()
-
-                            Image(
-                                systemName:
-                                    "arrow.right"
-                            )
+                            Image(systemName: "arrow.right")
                         }
                     }
-                    .buttonStyle(
-                        BuiltPrimaryButtonStyle()
-                    )
+                    .buttonStyle(BuiltPrimaryButtonStyle())
 
                     Button {
-                        showingSlipAlert =
-                            true
+                        showingSlipAlert = true
                     } label: {
                         Text("I smoked")
                     }
-                    .buttonStyle(
-                        BuiltSecondaryButtonStyle()
-                    )
+                    .buttonStyle(BuiltSecondaryButtonStyle())
                 }
             }
-            .padding(
-                .horizontal,
-                20
-            )
+            .padding(.horizontal, 20)
             .padding(.top, 26)
             .padding(.bottom, 36)
         }
@@ -733,9 +536,7 @@ struct CravingSessionView: View {
             Spacer()
 
             Image(
-                systemName:
-                    savedOutcome
-                        == .defeated
+                systemName: savedOutcome == .defeated
                     ? "checkmark"
                     : "arrow.counterclockwise"
             )
@@ -747,39 +548,31 @@ struct CravingSessionView: View {
             )
             .foregroundStyle(
                 savedOutcome == .defeated
-                ? Color.black
-                : BuiltTheme.textPrimary
+                    ? Color.black
+                    : BuiltTheme.textPrimary
             )
-            .frame(
-                width: 110,
-                height: 110
-            )
+            .frame(width: 110, height: 110)
             .background(
                 savedOutcome == .defeated
-                ? BuiltTheme.accent
-                : BuiltTheme.danger
-                    .opacity(0.18),
+                    ? BuiltTheme.accent
+                    : BuiltTheme.danger.opacity(0.18),
                 in: Circle()
             )
             .overlay {
                 Circle()
                     .stroke(
-                        savedOutcome
-                            == .defeated
-                        ? Color.clear
-                        : BuiltTheme
-                            .danger
-                            .opacity(0.55),
+                        savedOutcome == .defeated
+                            ? Color.clear
+                            : BuiltTheme.danger.opacity(0.55),
                         lineWidth: 1
                     )
             }
 
             VStack(spacing: 12) {
                 Text(
-                    savedOutcome
-                        == .defeated
-                    ? "Craving defeated."
-                    : "Continue from here."
+                    savedOutcome == .defeated
+                        ? "Craving defeated."
+                        : "Continue from here."
                 )
                 .font(
                     .system(
@@ -788,34 +581,18 @@ struct CravingSessionView: View {
                     )
                 )
                 .tracking(-1.2)
-                .foregroundStyle(
-                    BuiltTheme.textPrimary
-                )
-                .multilineTextAlignment(
-                    .center
-                )
+                .foregroundStyle(BuiltTheme.textPrimary)
+                .multilineTextAlignment(.center)
 
                 Text(
-                    savedOutcome
-                        == .defeated
-                    ? """
-                    You kept the promise you made to yourself.
-                    """
-                    : """
-                    One decision does not get to define the next one.
-                    """
+                    savedOutcome == .defeated
+                        ? "You kept the promise you made to yourself."
+                        : "One decision does not get to define the next one."
                 )
                 .font(.system(size: 16))
-                .foregroundStyle(
-                    BuiltTheme.textSecondary
-                )
-                .multilineTextAlignment(
-                    .center
-                )
-                .padding(
-                    .horizontal,
-                    30
-                )
+                .foregroundStyle(BuiltTheme.textSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 30)
             }
 
             Spacer()
@@ -823,12 +600,47 @@ struct CravingSessionView: View {
             Button("Done") {
                 dismiss()
             }
-            .buttonStyle(
-                BuiltPrimaryButtonStyle()
-            )
+            .buttonStyle(BuiltPrimaryButtonStyle())
         }
         .padding(.horizontal, 20)
         .padding(.bottom, 34)
+    }
+
+    private func beginBreathingPhase() {
+        phase = .breathe
+        didStartLiveActivity = true
+        Haptics.selection()
+
+        Task {
+            await LiveActivityManager.shared.start(
+                trigger: selectedTrigger,
+                identityStatement: profile.identityStatement,
+                duration: 60
+            )
+        }
+    }
+
+    private func moveToActionPhase() {
+        guard phase != .action else {
+            return
+        }
+
+        phase = .action
+        Haptics.selection()
+
+        Task {
+            await LiveActivityManager.shared.moveToAction()
+        }
+    }
+
+    private func closeSession() {
+        if didStartLiveActivity, !hasSaved {
+            Task {
+                await LiveActivityManager.shared.cancel()
+            }
+        }
+
+        dismiss()
     }
 
     private func save(
@@ -844,8 +656,7 @@ struct CravingSessionView: View {
         let entry = CravingEntry(
             intensity: Int(intensity),
             trigger: selectedTrigger,
-            replacementAction:
-                selectedAction,
+            replacementAction: selectedAction,
             outcome: outcome
         )
 
@@ -867,6 +678,12 @@ struct CravingSessionView: View {
 
         savedOutcome = outcome
         phase = .result
+
+        Task {
+            await LiveActivityManager.shared.finish(
+                didDefeatCraving: outcome == .defeated
+            )
+        }
     }
 }
 
@@ -875,107 +692,69 @@ private struct BreathingPulse: View {
 
     var body: some View {
         TimelineView(
-            .animation(
-                minimumInterval:
-                    1.0 / 30.0
-            )
+            .animation(minimumInterval: 1.0 / 30.0)
         ) { context in
-            let cycle =
-                context.date
-                    .timeIntervalSinceReferenceDate
-                    .truncatingRemainder(
-                        dividingBy: 8
-                    )
+            let cycle = context.date
+                .timeIntervalSinceReferenceDate
+                .truncatingRemainder(dividingBy: 8)
 
-            let isInhaling =
-                cycle < 4
-
-            let normalized =
-                isInhaling
+            let isInhaling = cycle < 4
+            let normalized = isInhaling
                 ? cycle / 4
                 : (8 - cycle) / 4
-
-            let scale =
-                0.78
-                + (0.22 * normalized)
+            let scale = 0.78 + (0.22 * normalized)
 
             ZStack {
                 Circle()
                     .stroke(
-                        Color.white
-                            .opacity(0.08),
+                        Color.white.opacity(0.08),
                         lineWidth: 1
                     )
-                    .frame(
-                        width: 270,
-                        height: 270
-                    )
+                    .frame(width: 270, height: 270)
 
                 Circle()
                     .fill(
                         RadialGradient(
                             colors: [
-                                BuiltTheme
-                                    .accent
-                                    .opacity(0.34),
-                                BuiltTheme
-                                    .accent
-                                    .opacity(0.03)
+                                BuiltTheme.accent.opacity(0.34),
+                                BuiltTheme.accent.opacity(0.03)
                             ],
                             center: .center,
                             startRadius: 8,
                             endRadius: 132
                         )
                     )
-                    .frame(
-                        width: 250,
-                        height: 250
-                    )
+                    .frame(width: 250, height: 250)
                     .scaleEffect(scale)
 
                 Circle()
                     .stroke(
-                        BuiltTheme
-                            .accent
-                            .opacity(0.70),
+                        BuiltTheme.accent.opacity(0.70),
                         lineWidth: 2
                     )
-                    .frame(
-                        width: 210,
-                        height: 210
-                    )
+                    .frame(width: 210, height: 210)
                     .scaleEffect(scale)
 
                 VStack(spacing: 7) {
-                    Text(
-                        isInhaling
-                        ? "INHALE"
-                        : "EXHALE"
-                    )
-                    .font(
-                        .system(
-                            size: 12,
-                            weight: .bold
+                    Text(isInhaling ? "INHALE" : "EXHALE")
+                        .font(
+                            .system(
+                                size: 12,
+                                weight: .bold
+                            )
                         )
-                    )
-                    .tracking(2)
-                    .foregroundStyle(
-                        BuiltTheme.accent
-                    )
+                        .tracking(2)
+                        .foregroundStyle(BuiltTheme.accent)
 
-                    Text(
-                        "\(secondsRemaining)"
-                    )
-                    .font(
-                        .system(
-                            size: 52,
-                            weight: .bold,
-                            design: .rounded
+                    Text("\(secondsRemaining)")
+                        .font(
+                            .system(
+                                size: 52,
+                                weight: .bold,
+                                design: .rounded
+                            )
                         )
-                    )
-                    .foregroundStyle(
-                        BuiltTheme.textPrimary
-                    )
+                        .foregroundStyle(BuiltTheme.textPrimary)
 
                     Text("SECONDS")
                         .font(
@@ -985,9 +764,7 @@ private struct BreathingPulse: View {
                             )
                         )
                         .tracking(1.4)
-                        .foregroundStyle(
-                            BuiltTheme.textSecondary
-                        )
+                        .foregroundStyle(BuiltTheme.textSecondary)
                 }
             }
         }
