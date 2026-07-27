@@ -13,7 +13,8 @@ struct BUILTApp: App {
             modelContainer = try ModelContainer(
                 for: QuitProfile.self,
                 CravingEntry.self,
-                MotivationPhoto.self
+                MotivationPhoto.self,
+                RewardGoal.self
             )
         } catch {
             fatalError("Unable to create SwiftData container: \(error)")

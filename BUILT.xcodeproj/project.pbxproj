@@ -72,20 +72,16 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
-				"Shared 2/BuiltSharedConstants.swift",
-				"Shared 2/CravingActivityAttributes.swift",
-				"Shared 2/WidgetSnapshot.swift",
-				"Shared 2/WidgetSnapshotStore.swift",
 			);
 			target = 4ED0DBAE3013F3FE00C9EF74 /* BUILT */;
 		};
-		4E6CEF2F30140AD6000B94DF /* Exceptions for "BUILT" folder in "BUILTWidgetsExtension" target */ = {
+		4E6CEFDB3017D19F000B94DF /* Exceptions for "BUILT" folder in "BUILTWidgetsExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				"Shared 2/BuiltSharedConstants.swift",
-				"Shared 2/CravingActivityAttributes.swift",
-				"Shared 2/WidgetSnapshot.swift",
-				"Shared 2/WidgetSnapshotStore.swift",
+				Shared/BuiltSharedConstants.swift,
+				Shared/CravingActivityAttributes.swift,
+				Shared/WidgetSnapshot.swift,
+				Shared/WidgetSnapshotStore.swift,
 			);
 			target = 4E6CEE9B301403A2000B94DF /* BUILTWidgetsExtension */;
 		};
@@ -104,7 +100,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				4E6CEEB930140571000B94DF /* Exceptions for "BUILT" folder in "BUILT" target */,
-				4E6CEF2F30140AD6000B94DF /* Exceptions for "BUILT" folder in "BUILTWidgetsExtension" target */,
+				4E6CEFDB3017D19F000B94DF /* Exceptions for "BUILT" folder in "BUILTWidgetsExtension" target */,
 			);
 			path = BUILT;
 			sourceTree = "<group>";

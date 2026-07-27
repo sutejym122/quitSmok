@@ -6,13 +6,50 @@ enum AppTab: Hashable {
     case rescue
     case proof
     case fitness
-    case insights
+    case growth
+}
+
+enum GrowthSection: String, CaseIterable, Identifiable, Hashable {
+    case recovery
+    case rewards
+    case patterns
+
+    var id: String {
+        rawValue
+    }
+
+    var title: String {
+        switch self {
+        case .recovery:
+            return "Recovery"
+
+        case .rewards:
+            return "Rewards"
+
+        case .patterns:
+            return "Patterns"
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .recovery:
+            return "heart.text.square.fill"
+
+        case .rewards:
+            return "gift.fill"
+
+        case .patterns:
+            return "chart.xyaxis.line"
+        }
+    }
 }
 
 @MainActor
 @Observable
 final class AppRouter {
     var selectedTab: AppTab = .today
+    var selectedGrowthSection: GrowthSection = .recovery
     var presentsRescue = false
 
     func handle(_ url: URL) {
@@ -31,8 +68,17 @@ final class AppRouter {
         case "fitness":
             selectedTab = .fitness
 
-        case "insights":
-            selectedTab = .insights
+        case "growth", "progress", "recovery":
+            selectedTab = .growth
+            selectedGrowthSection = .recovery
+
+        case "rewards":
+            selectedTab = .growth
+            selectedGrowthSection = .rewards
+
+        case "insights", "patterns":
+            selectedTab = .growth
+            selectedGrowthSection = .patterns
 
         case "today":
             selectedTab = .today

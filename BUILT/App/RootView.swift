@@ -68,12 +68,31 @@ private struct MainTabView: View {
     @Query(sort: \CravingEntry.createdAt)
     private var cravings: [CravingEntry]
 
+    @Query(sort: \RewardGoal.createdAt)
+    private var rewardGoals: [RewardGoal]
+
     @Environment(\.scenePhase)
     private var scenePhase
 
     private var widgetSyncSignature: String {
         let cravingSignature = cravings.map { craving in
             "\(craving.persistentModelID)-\(craving.outcomeRawValue)-\(craving.createdAt.timeIntervalSince1970)"
+        }
+        .joined(separator: "|")
+
+        let rewardSignature = rewardGoals.map { goal in
+            [
+                String(describing: goal.persistentModelID),
+                goal.title,
+                String(goal.targetAmount),
+                String(goal.bankedAmount),
+                String(goal.automaticSavingsBaseline),
+                String(goal.usesAutomaticSavings),
+                String(goal.isActive),
+                String(goal.completedAt?.timeIntervalSince1970 ?? 0),
+                String(goal.claimedAt?.timeIntervalSince1970 ?? 0)
+            ]
+            .joined(separator: "-")
         }
         .joined(separator: "|")
 
@@ -84,7 +103,8 @@ private struct MainTabView: View {
             String(profile.packPrice),
             profile.currencyCode,
             profile.identityStatement,
-            cravingSignature
+            cravingSignature,
+            rewardSignature
         ]
         .joined(separator: "#")
     }
@@ -135,14 +155,17 @@ private struct MainTabView: View {
                     )
                 }
 
-            InsightsView()
-                .tag(AppTab.insights)
-                .tabItem {
-                    Label(
-                        "Insights",
-                        systemImage: "chart.xyaxis.line"
-                    )
-                }
+            ProgressHubView(
+                profile: profile,
+                selectedSection: $router.selectedGrowthSection
+            )
+            .tag(AppTab.growth)
+            .tabItem {
+                Label(
+                    "Growth",
+                    systemImage: "chart.line.uptrend.xyaxis"
+                )
+            }
         }
         .tint(BuiltTheme.accent)
         .toolbarBackground(
@@ -180,7 +203,8 @@ private struct MainTabView: View {
     private func syncWidget() {
         WidgetSyncService.sync(
             profile: profile,
-            cravings: cravings
+            cravings: cravings,
+            rewardGoals: rewardGoals
         )
     }
 

@@ -149,15 +149,7 @@ struct SmokeFreeWidgetView: View {
                     .minimumScaleFactor(0.66)
                     .contentTransition(.numericText())
 
-                Text(entry.snapshot.identityStatement)
-                    .font(
-                        .system(
-                            size: 10,
-                            weight: .medium
-                        )
-                    )
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
+                mediumMotivationContent
                     .padding(.top, 6)
             }
 
@@ -197,6 +189,74 @@ struct SmokeFreeWidgetView: View {
             .frame(width: 108)
         }
         .padding(2)
+    }
+
+
+    @ViewBuilder
+    private var mediumMotivationContent: some View {
+        if entry.snapshot.hasActiveReward,
+           let title = entry.snapshot.activeRewardTitle {
+            Link(destination: BuiltSharedConstants.rewardsURL) {
+                VStack(
+                    alignment: .leading,
+                    spacing: 5
+                ) {
+                    HStack(spacing: 5) {
+                        Image(
+                            systemName: entry.snapshot.activeRewardIconName
+                                ?? "gift.fill"
+                        )
+                        .font(
+                            .system(
+                                size: 9,
+                                weight: .bold
+                            )
+                        )
+                        .foregroundStyle(accent)
+                        .widgetAccentable()
+
+                        Text(title.uppercased())
+                            .font(
+                                .system(
+                                    size: 8,
+                                    weight: .bold
+                                )
+                            )
+                            .tracking(0.8)
+                            .lineLimit(1)
+                    }
+
+                    ProgressView(
+                        value: entry.snapshot.activeRewardProgress(at: entry.date)
+                    )
+                    .tint(accent)
+
+                    if let current = entry.snapshot.formattedActiveRewardCurrent(at: entry.date),
+                       let target = entry.snapshot.formattedActiveRewardTarget {
+                        Text("\(current) of \(target)")
+                            .font(
+                                .system(
+                                    size: 8,
+                                    weight: .medium
+                                )
+                            )
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.72)
+                    }
+                }
+            }
+        } else {
+            Text(entry.snapshot.identityStatement)
+                .font(
+                    .system(
+                        size: 10,
+                        weight: .medium
+                    )
+                )
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+        }
     }
 
     private func metricPill(

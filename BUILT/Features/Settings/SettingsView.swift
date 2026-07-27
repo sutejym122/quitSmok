@@ -16,6 +16,9 @@ struct SettingsView: View {
     @Query
     private var photos: [MotivationPhoto]
 
+    @Query
+    private var rewardGoals: [RewardGoal]
+
     @State private var showingResetAlert = false
     @State private var showingDeleteAlert = false
 
@@ -78,6 +81,7 @@ struct SettingsView: View {
             ) {
                 profile.quitDate = .now
                 profile.slipCount += 1
+                RecoveryCelebrationStore.reset()
 
                 try? modelContext.save()
                 Haptics.warning()
@@ -103,7 +107,7 @@ struct SettingsView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(
-                "This permanently removes your profile, craving history, imported photo copies, widgets, and scheduled reminders."
+                "This permanently removes your profile, craving history, imported photo copies, reward goals, widgets, and scheduled reminders."
             )
         }
     }
@@ -367,7 +371,7 @@ struct SettingsView: View {
                         .foregroundStyle(BuiltTheme.textPrimary)
 
                     Text(
-                        "\(cravings.count) cravings · \(photos.count) photos"
+                        "\(cravings.count) cravings · \(photos.count) photos · \(rewardGoals.count) rewards"
                     )
                     .font(.system(size: 12))
                     .foregroundStyle(BuiltTheme.textSecondary)
@@ -467,11 +471,16 @@ struct SettingsView: View {
             modelContext.delete(photo)
         }
 
+        for goal in rewardGoals {
+            modelContext.delete(goal)
+        }
+
         modelContext.delete(profile)
         try? modelContext.save()
 
         WidgetSyncService.clear()
         NotificationPreferencesStore.reset()
+        RecoveryCelebrationStore.reset()
 
         Task {
             await NotificationManager.shared.cancelAll()
