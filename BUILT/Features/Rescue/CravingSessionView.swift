@@ -19,33 +19,43 @@ struct CravingSessionView: View {
 
     @State private var phase: Phase = .setup
     @State private var intensity = 6.0
-    @State private var selectedTrigger = "Stress"
-    @State private var selectedAction = "Drink water"
+    @State private var selectedTrigger: String
+    @State private var selectedAction: String
     @State private var secondsRemaining = 60
     @State private var savedOutcome: CravingOutcome?
     @State private var showingSlipAlert = false
     @State private var hasSaved = false
     @State private var didStartLiveActivity = false
 
-    private let triggers = [
-        "Stress",
-        "After food",
-        "Coffee",
-        "Alcohol",
-        "Boredom",
-        "Social",
-        "Driving",
-        "Habit"
-    ]
+    private let triggers: [String]
+    private let actions: [(String, String)]
 
-    private let actions = [
-        ("Drink water", "drop.fill"),
-        ("Walk 5 minutes", "figure.walk"),
-        ("20 push-ups", "figure.strengthtraining.traditional"),
-        ("Chew gum", "mouth.fill"),
-        ("Leave the room", "door.left.hand.open"),
-        ("Text someone", "message.fill")
-    ]
+    init(profile: QuitProfile) {
+        self.profile = profile
+
+        let orderedTriggers =
+            OnboardingPreferencesStore
+                .orderedTriggerTitles
+
+        let orderedActions =
+            OnboardingPreferencesStore
+                .orderedActions
+
+        triggers = orderedTriggers
+        actions = orderedActions
+
+        _selectedTrigger = State(
+            initialValue:
+                orderedTriggers.first
+                ?? CravingTrigger.stress.title
+        )
+
+        _selectedAction = State(
+            initialValue:
+                orderedActions.first?.0
+                ?? RescueAction.drinkWater.title
+        )
+    }
 
     var body: some View {
         ZStack {
