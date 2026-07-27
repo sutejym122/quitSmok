@@ -6,77 +6,90 @@ struct MetricCard: View {
     let value: String
     let footnote: String
 
+    @Environment(\.dynamicTypeSize)
+    private var dynamicTypeSize
+
+    @ScaledMetric(relativeTo: .body)
+    private var iconContainerSize: CGFloat = 38
+
     var body: some View {
         VStack(
             alignment: .leading,
-            spacing: 16
+            spacing: BuiltTheme.Spacing.medium
         ) {
             Image(systemName: icon)
-                .font(
-                    .system(
-                        size: 17,
-                        weight: .semibold
-                    )
-                )
+                .font(.body.weight(.semibold))
                 .foregroundStyle(
                     BuiltTheme.accent
                 )
                 .frame(
-                    width: 36,
-                    height: 36
+                    width: iconContainerSize,
+                    height: iconContainerSize
                 )
                 .background(
                     BuiltTheme.accent.opacity(0.12),
                     in: Circle()
                 )
+                .accessibilityHidden(true)
 
             VStack(
                 alignment: .leading,
-                spacing: 5
+                spacing: BuiltTheme.Spacing.xSmall
             ) {
                 Text(value)
                     .font(
-                        .system(
-                            size: 24,
-                            weight: .bold,
-                            design: .rounded
-                        )
+                        .title2
+                        .weight(.bold)
+                        .monospacedDigit()
                     )
                     .foregroundStyle(
                         BuiltTheme.textPrimary
                     )
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                    .lineLimit(
+                        dynamicTypeSize
+                            .isAccessibilitySize
+                        ? nil
+                        : 1
+                    )
+                    .minimumScaleFactor(0.72)
 
                 Text(title)
                     .font(
-                        .system(
-                            size: 13,
-                            weight: .semibold
-                        )
+                        .subheadline
+                        .weight(.semibold)
                     )
                     .foregroundStyle(
-                        BuiltTheme.textPrimary.opacity(0.88)
+                        BuiltTheme.textPrimary
+                            .opacity(0.90)
                     )
 
                 Text(footnote)
-                    .font(
-                        .system(
-                            size: 11,
-                            weight: .regular
-                        )
-                    )
+                    .font(.caption)
                     .foregroundStyle(
                         BuiltTheme.textSecondary
                     )
-                    .lineLimit(2)
+                    .fixedSize(
+                        horizontal: false,
+                        vertical: true
+                    )
             }
         }
         .frame(
             maxWidth: .infinity,
-            minHeight: 152,
+            minHeight:
+                dynamicTypeSize
+                    .isAccessibilitySize
+                ? nil
+                : 152,
             alignment: .leading
         )
-        .builtCard(padding: 16)
+        .builtCard(padding: 17)
+        .accessibilityElement(
+            children: .ignore
+        )
+        .accessibilityLabel(
+            "\(title), \(value)"
+        )
+        .accessibilityValue(footnote)
     }
 }

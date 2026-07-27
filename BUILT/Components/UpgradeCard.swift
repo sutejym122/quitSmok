@@ -6,60 +6,53 @@ struct UpgradeCard: View {
     var feature: ProFeature?
     let action: () -> Void
 
+    @Environment(\.dynamicTypeSize)
+    private var dynamicTypeSize
+
+    @ScaledMetric(relativeTo: .body)
+    private var iconContainerSize: CGFloat = 50
+
     var body: some View {
         Button(action: action) {
             VStack(
                 alignment: .leading,
-                spacing: 18
+                spacing: BuiltTheme.Spacing.large
             ) {
-                HStack(alignment: .top) {
-                    ZStack {
-                        Circle()
-                            .fill(
-                                BuiltTheme.accent.opacity(0.14)
-                            )
-                            .frame(width: 48, height: 48)
-
-                        Image(
-                            systemName:
-                                feature?.symbolName
-                                ?? "diamond.fill"
-                        )
-                        .font(
-                            .system(
-                                size: 19,
-                                weight: .semibold
-                            )
-                        )
-                        .foregroundStyle(BuiltTheme.accent)
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(
+                        alignment: .leading,
+                        spacing: BuiltTheme.Spacing.medium
+                    ) {
+                        featureIcon
+                        ProBadge()
                     }
-
-                    Spacer()
-                    ProBadge()
+                } else {
+                    HStack(alignment: .top) {
+                        featureIcon
+                        Spacer()
+                        ProBadge()
+                    }
                 }
 
                 VStack(
                     alignment: .leading,
-                    spacing: 7
+                    spacing: BuiltTheme.Spacing.small
                 ) {
                     Text(title)
                         .font(
-                            .system(
-                                size: 22,
-                                weight: .bold
-                            )
+                            .title3
+                            .weight(.bold)
                         )
                         .foregroundStyle(
                             BuiltTheme.textPrimary
                         )
+                        .fixedSize(
+                            horizontal: false,
+                            vertical: true
+                        )
 
                     Text(message)
-                        .font(
-                            .system(
-                                size: 14,
-                                weight: .medium
-                            )
-                        )
+                        .font(.subheadline)
                         .foregroundStyle(
                             BuiltTheme.textSecondary
                         )
@@ -69,26 +62,27 @@ struct UpgradeCard: View {
                         )
                 }
 
-                HStack {
+                HStack(spacing: 8) {
                     Text("Explore BUILT Pro")
                         .font(
-                            .system(
-                                size: 14,
-                                weight: .semibold
-                            )
+                            .subheadline
+                            .weight(.semibold)
                         )
 
                     Spacer()
 
                     Image(systemName: "arrow.right")
                         .font(
-                            .system(
-                                size: 13,
-                                weight: .bold
-                            )
+                            .subheadline
+                            .weight(.bold)
                         )
+                        .accessibilityHidden(true)
                 }
                 .foregroundStyle(BuiltTheme.accent)
+                .frame(
+                    minHeight:
+                        BuiltTheme.minimumTapTarget
+                )
             }
             .frame(
                 maxWidth: .infinity,
@@ -97,8 +91,44 @@ struct UpgradeCard: View {
             .builtCard(padding: 20)
         }
         .buttonStyle(.plain)
+        .contentShape(
+            RoundedRectangle(
+                cornerRadius:
+                    BuiltTheme.mediumRadius,
+                style: .continuous
+            )
+        )
+        .accessibilityElement(
+            children: .ignore
+        )
+        .accessibilityLabel(
+            "\(title). \(message)"
+        )
         .accessibilityHint(
             "Opens the BUILT Pro purchase screen"
         )
+        .accessibilityAddTraits(.isButton)
+    }
+
+    private var featureIcon: some View {
+        ZStack {
+            Circle()
+                .fill(
+                    BuiltTheme.accent.opacity(0.14)
+                )
+                .frame(
+                    width: iconContainerSize,
+                    height: iconContainerSize
+                )
+
+            Image(
+                systemName:
+                    feature?.symbolName
+                    ?? "diamond.fill"
+            )
+            .font(.title3.weight(.semibold))
+            .foregroundStyle(BuiltTheme.accent)
+        }
+        .accessibilityHidden(true)
     }
 }
