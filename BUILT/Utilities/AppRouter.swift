@@ -5,6 +5,7 @@ enum AppTab: Hashable {
     case today
     case rescue
     case proof
+    case fitness
     case insights
 }
 
@@ -26,6 +27,9 @@ final class AppRouter {
 
         case "proof":
             selectedTab = .proof
+
+        case "fitness":
+            selectedTab = .fitness
 
         case "insights":
             selectedTab = .insights

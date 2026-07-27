@@ -126,6 +126,15 @@ private struct MainTabView: View {
                     )
                 }
 
+            FitnessView(profile: profile)
+                .tag(AppTab.fitness)
+                .tabItem {
+                    Label(
+                        "Fitness",
+                        systemImage: "figure.strengthtraining.traditional"
+                    )
+                }
+
             InsightsView()
                 .tag(AppTab.insights)
                 .tabItem {
