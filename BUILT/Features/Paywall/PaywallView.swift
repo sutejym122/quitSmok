@@ -11,14 +11,9 @@ struct PaywallView: View {
 
     @State private var showsRestore = false
 
-    private let highlightedFeatures: [ProFeature] = [
-        .unlimitedMotivationPhotos,
-        .fitnessIntelligence,
-        .advancedTriggerPatterns,
-        .unlimitedRewardGoals,
-        .premiumWidgets,
-        .customReminders
-    ]
+    private var highlightedFeatures: [ProFeature] {
+        context.highlightedFeatures
+    }
 
     var body: some View {
         NavigationStack {

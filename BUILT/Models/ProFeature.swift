@@ -5,6 +5,7 @@ enum ProFeature: String, CaseIterable, Identifiable, Sendable {
     case fitnessIntelligence
     case advancedTriggerPatterns
     case unlimitedRewardGoals
+    case fullRecoveryTimeline
     case premiumWidgets
     case customReminders
     case progressSharing
@@ -24,6 +25,8 @@ enum ProFeature: String, CaseIterable, Identifiable, Sendable {
             return "Advanced trigger patterns"
         case .unlimitedRewardGoals:
             return "Unlimited reward goals"
+        case .fullRecoveryTimeline:
+            return "Complete recovery timeline"
         case .premiumWidgets:
             return "Premium widgets"
         case .customReminders:
@@ -40,11 +43,13 @@ enum ProFeature: String, CaseIterable, Identifiable, Sendable {
         case .unlimitedMotivationPhotos:
             return "Build a private physique and identity vault without photo limits."
         case .fitnessIntelligence:
-            return "See workouts, training volume, active energy, streaks, and trends since quitting."
+            return "See active energy, training streaks, workout history, and deeper trends since quitting."
         case .advancedTriggerPatterns:
             return "Understand when cravings happen, what starts them, and which actions help most."
         case .unlimitedRewardGoals:
             return "Turn protected cigarette spending into as many meaningful targets as you need."
+        case .fullRecoveryTimeline:
+            return "Follow the complete evidence-based recovery journey from minutes to years."
         case .premiumWidgets:
             return "Keep richer progress, rewards, and motivation visible across iOS."
         case .customReminders:
@@ -66,6 +71,8 @@ enum ProFeature: String, CaseIterable, Identifiable, Sendable {
             return "chart.xyaxis.line"
         case .unlimitedRewardGoals:
             return "giftcard.fill"
+        case .fullRecoveryTimeline:
+            return "heart.text.clipboard.fill"
         case .premiumWidgets:
             return "rectangle.stack.badge.plus"
         case .customReminders:
@@ -84,6 +91,7 @@ enum PaywallContext: String, Identifiable, Sendable {
     case fitness
     case patterns
     case rewardGoals
+    case recovery
     case widgets
     case general
 
@@ -103,6 +111,8 @@ enum PaywallContext: String, Identifiable, Sendable {
             return "TRIGGER INTELLIGENCE"
         case .rewardGoals:
             return "REWARD SYSTEM"
+        case .recovery:
+            return "RECOVERY JOURNEY"
         case .widgets:
             return "SYSTEM PRESENCE"
         }
@@ -120,6 +130,8 @@ enum PaywallContext: String, Identifiable, Sendable {
             return "Know what pulls you back."
         case .rewardGoals:
             return "Make quitting pay you."
+        case .recovery:
+            return "See the complete rebuild."
         case .widgets:
             return "Keep your progress in sight."
         }
@@ -132,13 +144,77 @@ enum PaywallContext: String, Identifiable, Sendable {
         case .motivationPhotos:
             return "Build an unlimited private library of the body, confidence, and life you are protecting."
         case .fitness:
-            return "Unlock deeper HealthKit trends, training streaks, workout history, and progress intelligence."
+            return "Unlock active-energy insights, training streaks, workout history, and deeper progress intelligence."
         case .patterns:
             return "Reveal repeated triggers and learn which replacement actions are actually working."
         case .rewardGoals:
             return "Create unlimited goals and direct the money you protect toward something real."
+        case .recovery:
+            return "Follow the evidence-based recovery journey from the first minutes through long-term milestones."
         case .widgets:
             return "Unlock richer Home Screen and Lock Screen progress experiences."
+        }
+    }
+
+    var highlightedFeatures: [ProFeature] {
+        switch self {
+        case .motivationPhotos:
+            return [
+                .unlimitedMotivationPhotos,
+                .fitnessIntelligence,
+                .progressSharing,
+                .premiumThemes
+            ]
+
+        case .fitness:
+            return [
+                .fitnessIntelligence,
+                .advancedTriggerPatterns,
+                .premiumWidgets,
+                .progressSharing
+            ]
+
+        case .patterns:
+            return [
+                .advancedTriggerPatterns,
+                .fitnessIntelligence,
+                .customReminders,
+                .progressSharing
+            ]
+
+        case .rewardGoals:
+            return [
+                .unlimitedRewardGoals,
+                .premiumWidgets,
+                .progressSharing,
+                .premiumThemes
+            ]
+
+        case .recovery:
+            return [
+                .fullRecoveryTimeline,
+                .premiumWidgets,
+                .progressSharing,
+                .customReminders
+            ]
+
+        case .widgets:
+            return [
+                .premiumWidgets,
+                .customReminders,
+                .progressSharing,
+                .premiumThemes
+            ]
+
+        case .settings, .general:
+            return [
+                .unlimitedMotivationPhotos,
+                .fitnessIntelligence,
+                .advancedTriggerPatterns,
+                .unlimitedRewardGoals,
+                .fullRecoveryTimeline,
+                .premiumWidgets
+            ]
         }
     }
 }
@@ -146,4 +222,19 @@ enum PaywallContext: String, Identifiable, Sendable {
 enum ProAccessPolicy {
     static let freeMotivationPhotoLimit = 1
     static let freeRewardGoalLimit = 1
+    static let freeRecoveryMilestoneLimit = 4
+
+    static func canAddMotivationPhoto(
+        hasPro: Bool,
+        photoCount: Int
+    ) -> Bool {
+        hasPro || photoCount < freeMotivationPhotoLimit
+    }
+
+    static func canCreateRewardGoal(
+        hasPro: Bool,
+        goalCount: Int
+    ) -> Bool {
+        hasPro || goalCount < freeRewardGoalLimit
+    }
 }

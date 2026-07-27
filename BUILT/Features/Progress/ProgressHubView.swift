@@ -8,15 +8,15 @@ struct ProgressHubView: View {
         Group {
             switch selectedSection {
             case .recovery:
-                RecoveryTimelineView(profile: profile)
+                RecoveryAccessView(profile: profile)
                     .transition(.opacity)
 
             case .rewards:
-                RewardsView(profile: profile)
+                RewardsAccessView(profile: profile)
                     .transition(.opacity)
 
             case .patterns:
-                InsightsView()
+                PatternsAccessView()
                     .transition(.opacity)
             }
         }
