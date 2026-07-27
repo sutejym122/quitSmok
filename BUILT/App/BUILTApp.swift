@@ -6,6 +6,9 @@ struct BUILTApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self)
     private var appDelegate
 
+    @StateObject
+    private var storeManager = StoreManager()
+
     private let modelContainer: ModelContainer
 
     init() {
@@ -17,7 +20,9 @@ struct BUILTApp: App {
                 RewardGoal.self
             )
         } catch {
-            fatalError("Unable to create SwiftData container: \(error)")
+            fatalError(
+                "Unable to create SwiftData container: \(error)"
+            )
         }
     }
 
@@ -25,6 +30,7 @@ struct BUILTApp: App {
         WindowGroup {
             RootView()
                 .preferredColorScheme(.dark)
+                .environmentObject(storeManager)
         }
         .modelContainer(modelContainer)
     }

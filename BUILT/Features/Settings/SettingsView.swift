@@ -10,6 +10,9 @@ struct SettingsView: View {
     @Environment(\.modelContext)
     private var modelContext
 
+    @EnvironmentObject
+    private var storeManager: StoreManager
+
     @Query
     private var cravings: [CravingEntry]
 
@@ -21,6 +24,8 @@ struct SettingsView: View {
 
     @State private var showingResetAlert = false
     @State private var showingDeleteAlert = false
+    @State private var showingPaywall = false
+    @State private var showingRestorePurchases = false
 
     var body: some View {
         NavigationStack {
@@ -35,6 +40,7 @@ struct SettingsView: View {
                         identitySection
                         quitDateSection
                         smokingPatternSection
+                        proSection
                         systemPresenceSection
                         dataSection
                     }
@@ -46,20 +52,42 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarBackground(
+                .ultraThinMaterial,
+                for: .navigationBar
+            )
+            .toolbarBackground(
+                .visible,
+                for: .navigationBar
+            )
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(
+                    placement: .topBarTrailing
+                ) {
                     Button("Done") {
                         try? modelContext.save()
                         dismiss()
                     }
                     .fontWeight(.semibold)
-                    .foregroundStyle(BuiltTheme.accent)
+                    .foregroundStyle(
+                        BuiltTheme.accent
+                    )
                 }
             }
         }
-        .onChange(of: profile.currencyCode) { _, newValue in
+        .sheet(isPresented: $showingPaywall) {
+            PaywallView(context: .settings)
+                .environmentObject(storeManager)
+        }
+        .sheet(
+            isPresented: $showingRestorePurchases
+        ) {
+            RestorePurchasesView()
+                .environmentObject(storeManager)
+        }
+        .onChange(
+            of: profile.currencyCode
+        ) { _, newValue in
             let cleaned = String(
                 newValue
                     .uppercased()
@@ -82,15 +110,17 @@ struct SettingsView: View {
                 profile.quitDate = .now
                 profile.slipCount += 1
                 RecoveryCelebrationStore.reset()
-
                 try? modelContext.save()
                 Haptics.warning()
             }
 
-            Button("Cancel", role: .cancel) {}
+            Button(
+                "Cancel",
+                role: .cancel
+            ) {}
         } message: {
             Text(
-                "Your craving history and photos stay saved. Only the current timer restarts."
+                "Your craving history, photos, and rewards stay saved. Only the current timer restarts."
             )
         }
         .alert(
@@ -104,10 +134,13 @@ struct SettingsView: View {
                 deleteEverything()
             }
 
-            Button("Cancel", role: .cancel) {}
+            Button(
+                "Cancel",
+                role: .cancel
+            ) {}
         } message: {
             Text(
-                "This permanently removes your profile, craving history, imported photo copies, reward goals, widgets, and scheduled reminders."
+                "This permanently removes your profile, craving history, imported photo copies, reward goals, widgets, and scheduled reminders. Your App Store purchase is not deleted."
             )
         }
     }
@@ -134,7 +167,9 @@ struct SettingsView: View {
                     weight: .semibold
                 )
             )
-            .foregroundStyle(BuiltTheme.textPrimary)
+            .foregroundStyle(
+                BuiltTheme.textPrimary
+            )
             .padding(16)
             .background(
                 Color.white.opacity(0.06),
@@ -179,7 +214,9 @@ struct SettingsView: View {
                             weight: .semibold
                         )
                     )
-                    .foregroundStyle(BuiltTheme.danger)
+                    .foregroundStyle(
+                        BuiltTheme.danger
+                    )
             }
         }
         .builtCard()
@@ -219,7 +256,9 @@ struct SettingsView: View {
                             weight: .medium
                         )
                     )
-                    .foregroundStyle(BuiltTheme.textPrimary)
+                    .foregroundStyle(
+                        BuiltTheme.textPrimary
+                    )
 
                 Spacer()
 
@@ -266,6 +305,116 @@ struct SettingsView: View {
         .builtCard()
     }
 
+    @ViewBuilder
+    private var proSection: some View {
+        VStack(spacing: 12) {
+            if storeManager.hasPro {
+                VStack(
+                    alignment: .leading,
+                    spacing: 18
+                ) {
+                    HStack {
+                        VStack(
+                            alignment: .leading,
+                            spacing: 5
+                        ) {
+                            Text("BUILT Pro")
+                                .font(
+                                    .system(
+                                        size: 22,
+                                        weight: .bold
+                                    )
+                                )
+                                .foregroundStyle(
+                                    BuiltTheme.textPrimary
+                                )
+
+                            Text(
+                                "Lifetime access is active on this Apple Account."
+                            )
+                            .font(.system(size: 13))
+                            .foregroundStyle(
+                                BuiltTheme.textSecondary
+                            )
+                        }
+
+                        Spacer()
+                        ProBadge()
+                    }
+
+                    HStack(spacing: 10) {
+                        Image(
+                            systemName:
+                                "checkmark.seal.fill"
+                        )
+                        .foregroundStyle(
+                            BuiltTheme.accent
+                        )
+
+                        Text(
+                            "Thank you for supporting an independent, privacy-first quitting app."
+                        )
+                        .font(
+                            .system(
+                                size: 13,
+                                weight: .medium
+                            )
+                        )
+                        .foregroundStyle(
+                            BuiltTheme.textSecondary
+                        )
+                    }
+                }
+                .builtCard(padding: 20)
+            } else {
+                UpgradeCard(
+                    title: "BUILT Pro",
+                    message:
+                        "One lifetime unlock for the complete fitness-driven quitting system.",
+                    action: {
+                        showingPaywall = true
+                    }
+                )
+            }
+
+            Button {
+                showingRestorePurchases = true
+            } label: {
+                settingsNavigationRow(
+                    icon: "arrow.clockwise",
+                    title: "Restore purchases",
+                    subtitle:
+                        "Recheck lifetime access using the same Apple Account"
+                )
+                .padding(18)
+                .background {
+                    RoundedRectangle(
+                        cornerRadius:
+                            BuiltTheme.mediumRadius,
+                        style: .continuous
+                    )
+                    .fill(.ultraThinMaterial)
+                    .overlay {
+                        RoundedRectangle(
+                            cornerRadius:
+                                BuiltTheme.mediumRadius,
+                            style: .continuous
+                        )
+                        .stroke(
+                            BuiltTheme.hairline,
+                            lineWidth: 1
+                        )
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            .disabled(storeManager.isBusy)
+            .opacity(
+                storeManager.isBusy ? 0.6 : 1
+            )
+        }
+    }
+
     private var systemPresenceSection: some View {
         VStack(
             alignment: .leading,
@@ -273,75 +422,35 @@ struct SettingsView: View {
         ) {
             settingTitle(
                 "System presence",
-                icon: "iphone.gen3.radiowaves.left.and.right"
+                icon:
+                    "iphone.gen3.radiowaves.left.and.right"
             )
 
             NavigationLink {
-                NotificationSettingsView(profile: profile)
+                NotificationSettingsView(
+                    profile: profile
+                )
             } label: {
-                HStack(spacing: 14) {
-                    Image(systemName: "bell.badge.fill")
-                        .foregroundStyle(BuiltTheme.accent)
-                        .frame(width: 30)
-
-                    VStack(
-                        alignment: .leading,
-                        spacing: 4
-                    ) {
-                        Text("Notifications")
-                            .font(
-                                .system(
-                                    size: 15,
-                                    weight: .semibold
-                                )
-                            )
-                            .foregroundStyle(BuiltTheme.textPrimary)
-
-                        Text("Identity, progress, and high-risk reminders")
-                            .font(.system(size: 12))
-                            .foregroundStyle(BuiltTheme.textSecondary)
-                    }
-
-                    Spacer()
-
-                    Image(systemName: "chevron.right")
-                        .font(
-                            .system(
-                                size: 13,
-                                weight: .semibold
-                            )
-                        )
-                        .foregroundStyle(BuiltTheme.textSecondary)
-                }
+                settingsNavigationRow(
+                    icon: "bell.badge.fill",
+                    title: "Notifications",
+                    subtitle:
+                        "Identity, progress, and high-risk reminders"
+                )
             }
             .buttonStyle(.plain)
 
             Divider()
                 .overlay(BuiltTheme.hairline)
 
-            HStack(spacing: 14) {
-                Image(systemName: "rectangle.stack.badge.plus")
-                    .foregroundStyle(BuiltTheme.accent)
-                    .frame(width: 30)
-
-                VStack(
-                    alignment: .leading,
-                    spacing: 4
-                ) {
-                    Text("Widgets and Live Activity")
-                        .font(
-                            .system(
-                                size: 15,
-                                weight: .semibold
-                            )
-                        )
-                        .foregroundStyle(BuiltTheme.textPrimary)
-
-                    Text("Add BUILT from the Home Screen or Lock Screen gallery.")
-                        .font(.system(size: 12))
-                        .foregroundStyle(BuiltTheme.textSecondary)
-                }
-            }
+            settingsInformationRow(
+                icon:
+                    "rectangle.stack.badge.plus",
+                title:
+                    "Widgets and Live Activity",
+                subtitle:
+                    "Add BUILT from the Home Screen or Lock Screen gallery."
+            )
         }
         .builtCard()
     }
@@ -368,19 +477,25 @@ struct SettingsView: View {
                                 weight: .semibold
                             )
                         )
-                        .foregroundStyle(BuiltTheme.textPrimary)
+                        .foregroundStyle(
+                            BuiltTheme.textPrimary
+                        )
 
                     Text(
                         "\(cravings.count) cravings · \(photos.count) photos · \(rewardGoals.count) rewards"
                     )
                     .font(.system(size: 12))
-                    .foregroundStyle(BuiltTheme.textSecondary)
+                    .foregroundStyle(
+                        BuiltTheme.textSecondary
+                    )
                 }
 
                 Spacer()
 
                 Image(systemName: "iphone")
-                    .foregroundStyle(BuiltTheme.accent)
+                    .foregroundStyle(
+                        BuiltTheme.accent
+                    )
             }
 
             Divider()
@@ -400,7 +515,9 @@ struct SettingsView: View {
                         weight: .semibold
                     )
                 )
-                .foregroundStyle(BuiltTheme.danger)
+                .foregroundStyle(
+                    BuiltTheme.danger
+                )
             }
         }
         .builtCard()
@@ -412,7 +529,9 @@ struct SettingsView: View {
     ) -> some View {
         HStack(spacing: 10) {
             Image(systemName: icon)
-                .foregroundStyle(BuiltTheme.accent)
+                .foregroundStyle(
+                    BuiltTheme.accent
+                )
                 .frame(width: 24)
 
             Text(title)
@@ -422,7 +541,9 @@ struct SettingsView: View {
                         weight: .semibold
                     )
                 )
-                .foregroundStyle(BuiltTheme.textPrimary)
+                .foregroundStyle(
+                    BuiltTheme.textPrimary
+                )
         }
     }
 
@@ -438,7 +559,9 @@ struct SettingsView: View {
                         weight: .medium
                     )
                 )
-                .foregroundStyle(BuiltTheme.textPrimary)
+                .foregroundStyle(
+                    BuiltTheme.textPrimary
+                )
 
             Spacer()
 
@@ -459,6 +582,69 @@ struct SettingsView: View {
                 )
             )
             .frame(width: 88)
+        }
+    }
+
+    private func settingsNavigationRow(
+        icon: String,
+        title: String,
+        subtitle: String
+    ) -> some View {
+        HStack(spacing: 14) {
+            settingsInformationRow(
+                icon: icon,
+                title: title,
+                subtitle: subtitle
+            )
+
+            Image(systemName: "chevron.right")
+                .font(
+                    .system(
+                        size: 13,
+                        weight: .semibold
+                    )
+                )
+                .foregroundStyle(
+                    BuiltTheme.textSecondary
+                )
+        }
+    }
+
+    private func settingsInformationRow(
+        icon: String,
+        title: String,
+        subtitle: String
+    ) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .foregroundStyle(
+                    BuiltTheme.accent
+                )
+                .frame(width: 30)
+
+            VStack(
+                alignment: .leading,
+                spacing: 4
+            ) {
+                Text(title)
+                    .font(
+                        .system(
+                            size: 15,
+                            weight: .semibold
+                        )
+                    )
+                    .foregroundStyle(
+                        BuiltTheme.textPrimary
+                    )
+
+                Text(subtitle)
+                    .font(.system(size: 12))
+                    .foregroundStyle(
+                        BuiltTheme.textSecondary
+                    )
+            }
+
+            Spacer(minLength: 0)
         }
     }
 
