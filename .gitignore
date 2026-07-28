@@ -4,3 +4,7 @@ build/
 *.xcuserstate
 xcuserdata/
 .swiftpm/
+
+.derivedData-tests/
+
+TestResults/

@@ -57,6 +57,7 @@
 		4E6CEEA0301403A3000B94DF /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		4E6CEEB73014054F000B94DF /* BUILTWidgetsExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BUILTWidgetsExtension.entitlements; sourceTree = "<group>"; };
 		4E89B0AC3017DC1500061BF3 /* Products.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Products.storekit; sourceTree = "<group>"; };
+		4E89B1B0301944A200061BF3 /* BUILT Unit Tests.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = "BUILT Unit Tests.xctestplan"; sourceTree = "<group>"; };
 		4ED0DBAF3013F3FE00C9EF74 /* BUILT.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BUILT.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4ED0DBBF3013F3FF00C9EF74 /* BUILTTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BUILTTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		4ED0DBC93013F3FF00C9EF74 /* BUILTUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BUILTUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -165,6 +166,7 @@
 		4ED0DBA63013F3FE00C9EF74 = {
 			isa = PBXGroup;
 			children = (
+				4E89B1B0301944A200061BF3 /* BUILT Unit Tests.xctestplan */,
 				4E89B0AC3017DC1500061BF3 /* Products.storekit */,
 				4E6CEEB73014054F000B94DF /* BUILTWidgetsExtension.entitlements */,
 				4ED0DBB13013F3FE00C9EF74 /* BUILT */,

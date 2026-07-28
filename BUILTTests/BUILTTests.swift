@@ -1,17 +1,23 @@
-//
-//  BUILTTests.swift
-//  BUILTTests
-//
-//  Created by Sutej  Ym  on 7/24/26.
-//
-
 import Testing
+
 @testable import BUILT
 
-struct BUILTTests {
+@Suite("BUILT Test Infrastructure")
+struct BUILTTestInfrastructureTests {
+    @Test(
+        "The test bundle can load the BUILT app module"
+    )
+    func appModuleLoads() {
+        #expect(
+            FitnessIdentity.allCases.count
+            == 4
+        )
 
-    @Test func example() async throws {
-        // Write your test here and use APIs like `#expect(...)` to check expected conditions.
+        #expect(
+            !FitnessIdentity
+                .buildingConsistency
+                .identityStatement
+                .isEmpty
+        )
     }
-
 }
