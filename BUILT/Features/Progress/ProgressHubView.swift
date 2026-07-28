@@ -4,24 +4,53 @@ struct ProgressHubView: View {
     let profile: QuitProfile
     @Binding var selectedSection: GrowthSection
 
+    @Environment(\.accessibilityReduceMotion)
+    private var reduceMotion
+
+    @Environment(\.dynamicTypeSize)
+    private var dynamicTypeSize
+
     var body: some View {
         Group {
             switch selectedSection {
             case .recovery:
-                RecoveryTimelineView(profile: profile)
-                    .transition(.opacity)
+                RecoveryAccessView(profile: profile)
+                    .transition(
+                        reduceMotion
+                        ? .opacity
+                        : .opacity.combined(
+                            with:
+                                .move(edge: .trailing)
+                        )
+                    )
 
             case .rewards:
-                RewardsView(profile: profile)
-                    .transition(.opacity)
+                RewardsAccessView(profile: profile)
+                    .transition(
+                        reduceMotion
+                        ? .opacity
+                        : .opacity.combined(
+                            with:
+                                .move(edge: .trailing)
+                        )
+                    )
 
             case .patterns:
-                InsightsView()
-                    .transition(.opacity)
+                PatternsAccessView()
+                    .transition(
+                        reduceMotion
+                        ? .opacity
+                        : .opacity.combined(
+                            with:
+                                .move(edge: .trailing)
+                        )
+                    )
             }
         }
         .animation(
-            .easeInOut(duration: 0.22),
+            reduceMotion
+            ? nil
+            : BuiltTheme.Motion.standard,
             value: selectedSection
         )
         .safeAreaInset(
@@ -33,71 +62,101 @@ struct ProgressHubView: View {
     }
 
     private var sectionSelector: some View {
-        HStack(spacing: 6) {
-            ForEach(GrowthSection.allCases) { section in
-                Button {
-                    selectedSection = section
-                    Haptics.selection()
-                } label: {
-                    HStack(spacing: 7) {
-                        Image(systemName: section.symbolName)
-                            .font(
-                                .system(
-                                    size: 12,
-                                    weight: .semibold
-                                )
-                            )
-
-                        Text(section.title)
-                            .font(
-                                .system(
-                                    size: 12,
-                                    weight: .semibold
-                                )
-                            )
-                    }
-                    .foregroundStyle(
-                        selectedSection == section
+        ScrollView(
+            .horizontal,
+            showsIndicators: false
+        ) {
+            HStack(
+                spacing: BuiltTheme.Spacing.small
+            ) {
+                ForEach(
+                    GrowthSection.allCases
+                ) { section in
+                    Button {
+                        selectedSection = section
+                        Haptics.selection()
+                    } label: {
+                        Label(
+                            section.title,
+                            systemImage:
+                                section.symbolName
+                        )
+                        .font(
+                            .subheadline
+                            .weight(.semibold)
+                        )
+                        .foregroundStyle(
+                            selectedSection
+                                == section
                             ? Color.black
-                            : BuiltTheme.textSecondary
-                    )
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 11)
-                    .background(
-                        selectedSection == section
+                            : BuiltTheme
+                                .textPrimary
+                        )
+                        .padding(
+                            .horizontal,
+                            dynamicTypeSize
+                                .isAccessibilitySize
+                            ? 16
+                            : 18
+                        )
+                        .frame(
+                            minHeight:
+                                BuiltTheme
+                                    .minimumTapTarget
+                        )
+                        .background(
+                            selectedSection
+                                == section
                             ? BuiltTheme.accent
-                            : Color.clear,
-                        in: Capsule()
+                            : BuiltTheme.elevated
+                                .opacity(0.88),
+                            in: Capsule(
+                                style: .continuous
+                            )
+                        )
+                        .overlay {
+                            Capsule(
+                                style: .continuous
+                            )
+                            .stroke(
+                                selectedSection
+                                    == section
+                                ? Color.clear
+                                : BuiltTheme
+                                    .hairline,
+                                lineWidth: 1
+                            )
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(
+                        selectedSection
+                            == section
+                        ? .isSelected
+                        : []
+                    )
+                    .accessibilityHint(
+                        "Shows the \(section.title.lowercased()) section"
                     )
                 }
-                .buttonStyle(.plain)
             }
+            .padding(
+                .horizontal,
+                BuiltTheme.Spacing
+                    .screenHorizontal
+            )
+            .padding(.vertical, 10)
         }
-        .padding(5)
         .background(
-            .ultraThinMaterial,
-            in: Capsule()
+            .ultraThinMaterial
         )
-        .overlay {
-            Capsule()
-                .stroke(
-                    BuiltTheme.hairline,
-                    lineWidth: 1
+        .overlay(
+            alignment: .bottom
+        ) {
+            Divider()
+                .overlay(
+                    BuiltTheme.hairline
                 )
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 8)
-        .padding(.bottom, 10)
-        .background(
-            LinearGradient(
-                colors: [
-                    BuiltTheme.background,
-                    BuiltTheme.background.opacity(0.92),
-                    BuiltTheme.background.opacity(0)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        )
     }
 }

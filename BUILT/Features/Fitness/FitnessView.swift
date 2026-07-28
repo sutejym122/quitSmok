@@ -1,5 +1,6 @@
 import SwiftUI
 import Charts
+import UIKit
 
 struct FitnessView: View {
     let profile: QuitProfile
@@ -10,10 +11,40 @@ struct FitnessView: View {
     @Environment(\.scenePhase)
     private var scenePhase
 
-    private var metrics: WorkoutMetrics {
+    @Environment(\.dynamicTypeSize)
+    private var dynamicTypeSize
+
+    @Environment(\.openURL)
+    private var openURL
+
+    private var metrics:
+        WorkoutMetrics {
         WorkoutMetrics(
             workouts: healthKit.workouts
         )
+    }
+
+    private var metricColumns:
+        [GridItem] {
+        if dynamicTypeSize.isAccessibilitySize {
+            return [
+                GridItem(
+                    .flexible(),
+                    spacing: 12
+                )
+            ]
+        }
+
+        return [
+            GridItem(
+                .flexible(),
+                spacing: 12
+            ),
+            GridItem(
+                .flexible(),
+                spacing: 12
+            )
+        ]
     }
 
     var body: some View {
@@ -24,24 +55,31 @@ struct FitnessView: View {
                 ScrollView {
                     VStack(
                         alignment: .leading,
-                        spacing: 26
+                        spacing:
+                            BuiltTheme.Spacing
+                                .xLarge
                     ) {
                         header
 
-                        if !healthKit.hasRequestedAuthorization {
+                        if !healthKit
+                            .hasRequestedAuthorization {
                             HealthKitPermissionView(
                                 isAvailable:
-                                    healthKit.isAvailable,
+                                    healthKit
+                                        .isAvailable,
                                 isWorking:
-                                    healthKit.isLoading,
+                                    healthKit
+                                        .isLoading,
                                 errorMessage:
-                                    healthKit.errorMessage
+                                    healthKit
+                                        .errorMessage
                             ) {
                                 Task {
                                     await healthKit
                                         .requestAuthorization(
                                             since:
-                                                profile.quitDate
+                                                profile
+                                                    .quitDate
                                         )
                                 }
                             }
@@ -51,19 +89,23 @@ struct FitnessView: View {
                     }
                     .padding(
                         .horizontal,
-                        20
+                        BuiltTheme.Spacing
+                            .screenHorizontal
                     )
                     .padding(.top, 18)
-                    .padding(.bottom, 36)
+                    .padding(.bottom, 40)
                 }
+                .scrollIndicators(.hidden)
                 .refreshable {
                     await healthKit.refresh(
-                        since: profile.quitDate
+                        since:
+                            profile.quitDate
                     )
                 }
 
                 if healthKit.isLoading
-                    && healthKit.hasRequestedAuthorization {
+                    && healthKit
+                        .hasRequestedAuthorization {
                     loadingOverlay
                 }
             }
@@ -86,18 +128,21 @@ struct FitnessView: View {
                 )
             }
         }
-        .onChange(
-            of: scenePhase
-        ) { _, newPhase in
-            guard newPhase == .active,
-                  healthKit.hasRequestedAuthorization
+        .onChange(of: scenePhase) {
+            _, newPhase in
+
+            guard
+                newPhase == .active,
+                healthKit
+                    .hasRequestedAuthorization
             else {
                 return
             }
 
             Task {
                 await healthKit.refresh(
-                    since: profile.quitDate
+                    since:
+                        profile.quitDate
                 )
             }
         }
@@ -105,7 +150,8 @@ struct FitnessView: View {
 
     private var header: some View {
         HStack(
-            alignment: .bottom
+            alignment: .center,
+            spacing: BuiltTheme.Spacing.medium
         ) {
             SectionHeader(
                 eyebrow:
@@ -116,62 +162,63 @@ struct FitnessView: View {
 
             Spacer()
 
-            if healthKit.hasRequestedAuthorization {
-                Button {
-                    Task {
-                        await healthKit.refresh(
-                            since: profile.quitDate
-                        )
-                    }
-                } label: {
-                    Image(
-                        systemName:
-                            "arrow.clockwise"
+            BuiltIconButton(
+                systemName:
+                    "arrow.clockwise",
+                accessibilityLabel:
+                    "Refresh fitness data",
+                isEnabled:
+                    !healthKit.isLoading
+            ) {
+                Task {
+                    await healthKit.refresh(
+                        since:
+                            profile.quitDate
                     )
-                    .font(
-                        .system(
-                            size: 15,
-                            weight: .semibold
-                        )
-                    )
-                    .foregroundStyle(
-                        BuiltTheme.textPrimary
-                    )
-                    .frame(
-                        width: 44,
-                        height: 44
-                    )
-                    .background(
-                        .ultraThinMaterial,
-                        in: Circle()
-                    )
-                    .overlay {
-                        Circle()
-                            .stroke(
-                                BuiltTheme.hairline,
-                                lineWidth: 1
-                            )
-                    }
                 }
-                .disabled(healthKit.isLoading)
-                .accessibilityLabel(
-                    "Refresh fitness data"
-                )
             }
         }
     }
 
-    private var connectedContent: some View {
+    private var connectedContent:
+        some View {
         VStack(
             alignment: .leading,
-            spacing: 26
+            spacing:
+                BuiltTheme.Spacing.xLarge
         ) {
             identityHero
 
             if let errorMessage =
                 healthKit.errorMessage {
-                errorCard(
-                    message: errorMessage
+                BuiltStatusCard(
+                    kind: .error,
+                    title:
+                        "Training data could not refresh",
+                    message: errorMessage,
+                    primaryActionTitle:
+                        "Try again",
+                    primaryAction: refresh,
+                    secondaryActionTitle:
+                        "Open Settings",
+                    secondaryAction:
+                        openAppSettings
+                )
+            } else if healthKit
+                .workouts.isEmpty {
+                BuiltStatusCard(
+                    kind: .neutral,
+                    title:
+                        "No Apple Health workouts found",
+                    message:
+                        "Workouts recorded after your quit date will appear here. Apple protects read-permission privacy, so an empty result can also mean access is limited.",
+                    primaryActionTitle:
+                        "Refresh",
+                    primaryAction: refresh,
+                    secondaryActionTitle:
+                        "Review Settings",
+                    secondaryAction:
+                        openAppSettings
                 )
             }
 
@@ -183,90 +230,27 @@ struct FitnessView: View {
     }
 
     private var identityHero: some View {
-        VStack(
-            alignment: .leading,
-            spacing: 18
-        ) {
-            Text("SMOKE-FREE TRAINING")
-                .font(
-                    .system(
-                        size: 11,
-                        weight: .bold
-                    )
-                )
-                .tracking(1.9)
-                .foregroundStyle(
-                    BuiltTheme.accent
-                )
-
-            Text(
+        BuiltHeroPanel(
+            eyebrow:
+                "Smoke-free training",
+            title:
                 metrics.totalWorkouts == 1
-                ? """
-                1 workout completed by the version of you that does not smoke.
-                """
-                : """
-                \(metrics.totalWorkouts) workouts completed by the version of you that does not smoke.
-                """
-            )
-            .font(
-                .system(
-                    size: 34,
-                    weight: .bold
-                )
-            )
-            .tracking(-1.1)
-            .foregroundStyle(
-                BuiltTheme.textPrimary
-            )
-            .fixedSize(
-                horizontal: false,
-                vertical: true
-            )
-
-            HStack(spacing: 10) {
-                Label(
-                    "\(metrics.workoutsThisWeek) this week",
-                    systemImage: "calendar"
-                )
-
-                Text("·")
-
-                Label(
-                    metrics.mostFrequentWorkout,
-                    systemImage: "trophy.fill"
-                )
-            }
-            .font(
-                .system(
-                    size: 13,
-                    weight: .medium
-                )
-            )
-            .foregroundStyle(
-                BuiltTheme.textSecondary
-            )
-            .lineLimit(1)
-            .minimumScaleFactor(0.75)
-        }
-        .frame(
-            maxWidth: .infinity,
-            alignment: .leading
+                ? "1 workout completed by the version of you that does not smoke."
+                : "\(metrics.totalWorkouts) workouts completed by the version of you that does not smoke.",
+            message:
+                "\(metrics.workoutsThisWeek) this week · \(metrics.mostFrequentWorkout)",
+            systemName:
+                "figure.strengthtraining.traditional",
+            trailingValue:
+                "\(metrics.currentStreak)",
+            trailingLabel:
+                "Day streak"
         )
-        .builtCard(padding: 24)
     }
 
     private var metricsGrid: some View {
         LazyVGrid(
-            columns: [
-                GridItem(
-                    .flexible(),
-                    spacing: 12
-                ),
-                GridItem(
-                    .flexible(),
-                    spacing: 12
-                )
-            ],
+            columns: metricColumns,
             spacing: 12
         ) {
             FitnessMetricCard(
@@ -274,10 +258,9 @@ struct FitnessView: View {
                     "figure.strengthtraining.traditional",
                 value:
                     "\(metrics.totalWorkouts)",
-                title:
-                    "Workouts",
+                title: "Workouts",
                 footnote:
-                    "Recorded since your quit date"
+                    "Completed since quitting"
             )
 
             FitnessMetricCard(
@@ -287,7 +270,7 @@ struct FitnessView: View {
                 title:
                     "Workout minutes",
                 footnote:
-                    "Time deliberately spent training"
+                    "Total recorded training"
             )
 
             FitnessMetricCard(
@@ -297,19 +280,38 @@ struct FitnessView: View {
                 title:
                     "Active kcal",
                 footnote:
-                    "Apple Health active energy since quitting"
+                    "Apple Health total"
             )
 
             FitnessMetricCard(
-                icon: "calendar.badge.checkmark",
+                icon:
+                    "calendar.badge.checkmark",
+                value:
+                    "\(metrics.workoutsThisWeek)",
+                title: "This week",
+                footnote:
+                    "Current training rhythm"
+            )
+
+            FitnessMetricCard(
+                icon:
+                    "arrow.triangle.2.circlepath",
                 value:
                     "\(metrics.currentStreak)",
                 title:
-                    "Training streak",
+                    "Current streak",
                 footnote:
-                    metrics.currentStreak == 1
-                    ? "1 consecutive training day"
-                    : "\(metrics.currentStreak) consecutive training days"
+                    "Consecutive training days"
+            )
+
+            FitnessMetricCard(
+                icon: "trophy.fill",
+                value:
+                    "\(metrics.longestStreak)",
+                title:
+                    "Longest streak",
+                footnote:
+                    "Your best rhythm"
             )
         }
     }
@@ -317,54 +319,16 @@ struct FitnessView: View {
     private var weeklyChart: some View {
         VStack(
             alignment: .leading,
-            spacing: 18
+            spacing: BuiltTheme.Spacing.large
         ) {
-            HStack {
-                VStack(
-                    alignment: .leading,
-                    spacing: 4
-                ) {
-                    Text("LAST SEVEN DAYS")
-                        .font(
-                            .system(
-                                size: 11,
-                                weight: .bold
-                            )
-                        )
-                        .tracking(1.6)
-                        .foregroundStyle(
-                            BuiltTheme.accent
-                        )
-
-                    Text("Training volume")
-                        .font(
-                            .system(
-                                size: 22,
-                                weight: .semibold
-                            )
-                        )
-                        .foregroundStyle(
-                            BuiltTheme.textPrimary
-                        )
-                }
-
-                Spacer()
-
-                Text(
-                    """
-                    \(metrics.lastSevenDays.reduce(0) { $0 + $1.workoutMinutes }) min
-                    """
-                )
-                .font(
-                    .system(
-                        size: 12,
-                        weight: .medium
-                    )
-                )
-                .foregroundStyle(
-                    BuiltTheme.textSecondary
-                )
-            }
+            SectionHeader(
+                eyebrow:
+                    "Last seven days",
+                title:
+                    "Training volume",
+                trailingText:
+                    "\(metrics.lastSevenDays.reduce(0) { $0 + $1.workoutMinutes }) min"
+            )
 
             Chart(
                 metrics.lastSevenDays
@@ -384,13 +348,23 @@ struct FitnessView: View {
                     LinearGradient(
                         colors: [
                             BuiltTheme.accent,
-                            BuiltTheme.accentSoft
+                            BuiltTheme
+                                .accentSoft
                         ],
                         startPoint: .bottom,
                         endPoint: .top
                     )
                 )
                 .cornerRadius(6)
+                .accessibilityLabel(
+                    summary.date.formatted(
+                        .dateTime
+                        .weekday(.wide)
+                    )
+                )
+                .accessibilityValue(
+                    "\(summary.workoutMinutes) workout minutes"
+                )
             }
             .frame(height: 220)
             .chartYAxis {
@@ -399,25 +373,30 @@ struct FitnessView: View {
                 ) { _ in
                     AxisGridLine()
                         .foregroundStyle(
-                            Color.white.opacity(0.08)
+                            Color.white
+                                .opacity(0.08)
                         )
 
                     AxisValueLabel()
                         .foregroundStyle(
-                            BuiltTheme.textSecondary
+                            BuiltTheme
+                                .textSecondary
                         )
                 }
             }
             .chartXAxis {
                 AxisMarks(
-                    values: .stride(by: .day)
+                    values:
+                        .stride(by: .day)
                 ) { _ in
                     AxisValueLabel(
-                        format: .dateTime
+                        format:
+                            .dateTime
                             .weekday(.narrow)
                     )
                     .foregroundStyle(
-                        BuiltTheme.textSecondary
+                        BuiltTheme
+                            .textSecondary
                     )
                 }
             }
@@ -425,39 +404,26 @@ struct FitnessView: View {
         .builtCard(padding: 20)
     }
 
-    private var trainingOverview: some View {
+    private var trainingOverview:
+        some View {
         VStack(
             alignment: .leading,
-            spacing: 18
+            spacing: BuiltTheme.Spacing.medium
         ) {
-            Text("TRAINING OVERVIEW")
-                .font(
-                    .system(
-                        size: 11,
-                        weight: .bold
-                    )
-                )
-                .tracking(1.7)
-                .foregroundStyle(
-                    BuiltTheme.accent
-                )
-
-            overviewRow(
-                icon: "calendar",
-                title: "Workouts this week",
-                value: "\(metrics.workoutsThisWeek)"
+            SectionHeader(
+                eyebrow:
+                    "Training overview",
+                title:
+                    "The pattern behind the work"
             )
 
-            Divider()
-                .overlay(
-                    BuiltTheme.hairline
-                )
-
             overviewRow(
-                icon: "flame",
-                title: "Longest training streak",
+                icon: "trophy.fill",
+                title:
+                    "Most frequent workout",
                 value:
-                    "\(metrics.longestStreak) day\(metrics.longestStreak == 1 ? "" : "s")"
+                    metrics
+                        .mostFrequentWorkout
             )
 
             Divider()
@@ -467,34 +433,45 @@ struct FitnessView: View {
 
             overviewRow(
                 icon: "figure.run",
-                title: "Apple Exercise Time",
+                title:
+                    "Apple Exercise Time",
                 value:
                     "\(Int(healthKit.totalExerciseMinutes.rounded())) min"
             )
 
-            Divider()
-                .overlay(
-                    BuiltTheme.hairline
-                )
+            if let lastUpdated =
+                healthKit.lastUpdated {
+                Divider()
+                    .overlay(
+                        BuiltTheme.hairline
+                    )
 
-            overviewRow(
-                icon: "trophy",
-                title: "Most frequent workout",
-                value:
-                    metrics.mostFrequentWorkout
-            )
+                overviewRow(
+                    icon:
+                        "arrow.clockwise",
+                    title:
+                        "Last refreshed",
+                    value:
+                        lastUpdated.formatted(
+                            date: .omitted,
+                            time: .shortened
+                        )
+                )
+            }
         }
         .builtCard(padding: 20)
     }
 
-    private var recentWorkouts: some View {
+    private var recentWorkouts:
+        some View {
         VStack(
             alignment: .leading,
-            spacing: 16
+            spacing: BuiltTheme.Spacing.medium
         ) {
             SectionHeader(
-                eyebrow: "Evidence",
-                title: "Recent workouts",
+                eyebrow: "History",
+                title:
+                    "Recent workouts",
                 trailingText:
                     healthKit.workouts.isEmpty
                     ? nil
@@ -502,11 +479,22 @@ struct FitnessView: View {
             )
 
             if healthKit.workouts.isEmpty {
-                emptyWorkoutState
+                BuiltEmptyState(
+                    systemName:
+                        "figure.run.circle",
+                    title:
+                        "Your next workout starts the record",
+                    message:
+                        "Record a workout in Apple Fitness or another Health-compatible app, then pull down to refresh.",
+                    actionTitle:
+                        "Refresh",
+                    action: refresh
+                )
             } else {
-                VStack(spacing: 10) {
+                LazyVStack(spacing: 10) {
                     ForEach(
-                        healthKit.workouts.prefix(10)
+                        healthKit.workouts
+                            .prefix(10)
                     ) { workout in
                         WorkoutRow(
                             workout: workout
@@ -517,69 +505,26 @@ struct FitnessView: View {
         }
     }
 
-    private var emptyWorkoutState: some View {
-        VStack(spacing: 15) {
-            Image(
-                systemName:
-                    "heart.text.clipboard"
-            )
-            .font(
-                .system(
-                    size: 36,
-                    weight: .light
-                )
-            )
-            .foregroundStyle(
-                BuiltTheme.accent
-            )
-
-            Text("No workouts found")
-                .font(
-                    .system(
-                        size: 18,
-                        weight: .semibold
-                    )
-                )
-                .foregroundStyle(
-                    BuiltTheme.textPrimary
-                )
-
-            Text(
-                """
-                Record a workout in Apple Fitness or another Health-compatible app, then pull down to refresh. Apple protects read-permission privacy, so an empty result can also mean access was not granted.
-                """
-            )
-            .font(.system(size: 14))
-            .foregroundStyle(
-                BuiltTheme.textSecondary
-            )
-            .multilineTextAlignment(
-                .center
-            )
-        }
-        .frame(
-            maxWidth: .infinity
-        )
-        .builtCard(padding: 26)
-    }
-
-    private var loadingOverlay: some View {
+    private var loadingOverlay:
+        some View {
         ZStack {
-            Color.black.opacity(0.22)
+            Color.black.opacity(0.24)
                 .ignoresSafeArea()
+                .accessibilityHidden(true)
 
-            ProgressView()
-                .tint(
-                    BuiltTheme.accent
-                )
-                .controlSize(.large)
-                .padding(26)
-                .background(
-                    .ultraThinMaterial,
-                    in: Circle()
-                )
+            BuiltLoadingCard(
+                title:
+                    "Refreshing Apple Health",
+                message:
+                    "Updating your smoke-free training totals."
+            )
+            .padding(.horizontal, 28)
         }
-        .allowsHitTesting(false)
+        .transition(.opacity)
+        .builtAnimation(
+            value:
+                healthKit.isLoading
+        )
     }
 
     private func overviewRow(
@@ -587,70 +532,98 @@ struct FitnessView: View {
         title: String,
         value: String
     ) -> some View {
-        HStack(spacing: 13) {
-            Image(systemName: icon)
-                .foregroundStyle(
-                    BuiltTheme.accent
-                )
-                .frame(width: 26)
-
-            Text(title)
-                .font(
-                    .system(
-                        size: 14,
-                        weight: .medium
+        Group {
+            if dynamicTypeSize
+                .isAccessibilitySize {
+                VStack(
+                    alignment: .leading,
+                    spacing:
+                        BuiltTheme.Spacing.small
+                ) {
+                    Label(
+                        title,
+                        systemImage: icon
                     )
-                )
-                .foregroundStyle(
-                    BuiltTheme.textPrimary.opacity(0.88)
-                )
-
-            Spacer()
-
-            Text(value)
-                .font(
-                    .system(
-                        size: 14,
-                        weight: .semibold
+                    .font(
+                        .subheadline
+                        .weight(.medium)
                     )
-                )
-                .foregroundStyle(
-                    BuiltTheme.textPrimary
-                )
-                .multilineTextAlignment(
-                    .trailing
-                )
+                    .foregroundStyle(
+                        BuiltTheme.textPrimary
+                            .opacity(0.90)
+                    )
+
+                    Text(value)
+                        .font(
+                            .headline
+                            .weight(.semibold)
+                        )
+                        .foregroundStyle(
+                            BuiltTheme.textPrimary
+                        )
+                }
+            } else {
+                HStack(
+                    spacing:
+                        BuiltTheme.Spacing.medium
+                ) {
+                    Image(systemName: icon)
+                        .foregroundStyle(
+                            BuiltTheme.accent
+                        )
+                        .frame(width: 28)
+                        .accessibilityHidden(
+                            true
+                        )
+
+                    Text(title)
+                        .font(
+                            .subheadline
+                            .weight(.medium)
+                        )
+                        .foregroundStyle(
+                            BuiltTheme.textPrimary
+                                .opacity(0.90)
+                        )
+
+                    Spacer()
+
+                    Text(value)
+                        .font(
+                            .subheadline
+                            .weight(.semibold)
+                        )
+                        .foregroundStyle(
+                            BuiltTheme.textPrimary
+                        )
+                        .multilineTextAlignment(
+                            .trailing
+                        )
+                }
+            }
+        }
+        .accessibilityElement(
+            children: .combine
+        )
+    }
+
+    private func refresh() {
+        Task {
+            await healthKit.refresh(
+                since: profile.quitDate
+            )
         }
     }
 
-    private func errorCard(
-        message: String
-    ) -> some View {
-        HStack(
-            alignment: .top,
-            spacing: 13
-        ) {
-            Image(
-                systemName:
-                    "exclamationmark.triangle.fill"
-            )
-            .foregroundStyle(
-                BuiltTheme.danger
-            )
-
-            Text(message)
-                .font(
-                    .system(
-                        size: 13,
-                        weight: .medium
-                    )
-                )
-                .foregroundStyle(
-                    BuiltTheme.textPrimary
-                )
-
-            Spacer()
+    private func openAppSettings() {
+        guard let settingsURL = URL(
+            string:
+                UIApplication
+                    .openSettingsURLString
+        ) else {
+            return
         }
-        .builtCard(padding: 16)
+
+        openURL(settingsURL)
     }
 }

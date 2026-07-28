@@ -11,7 +11,8 @@ struct ProofView: View {
         sort: \MotivationPhoto.createdAt,
         order: .reverse
     )
-    private var photos: [MotivationPhoto]
+    private var photos:
+        [MotivationPhoto]
 
     @State private var pickerItems:
         [PhotosPickerItem] = []
@@ -19,16 +20,34 @@ struct ProofView: View {
     @State private var isImporting =
         false
 
-    private let columns = [
-        GridItem(
-            .flexible(),
-            spacing: 12
-        ),
-        GridItem(
-            .flexible(),
-            spacing: 12
-        )
-    ]
+    @State private var errorMessage:
+        String?
+
+    @Environment(\.dynamicTypeSize)
+    private var dynamicTypeSize
+
+    private var columns:
+        [GridItem] {
+        if dynamicTypeSize.isAccessibilitySize {
+            return [
+                GridItem(
+                    .flexible(),
+                    spacing: 12
+                )
+            ]
+        }
+
+        return [
+            GridItem(
+                .flexible(),
+                spacing: 12
+            ),
+            GridItem(
+                .flexible(),
+                spacing: 12
+            )
+        ]
+    }
 
     var body: some View {
         NavigationStack {
@@ -38,9 +57,27 @@ struct ProofView: View {
                 ScrollView {
                     VStack(
                         alignment: .leading,
-                        spacing: 24
+                        spacing:
+                            BuiltTheme.Spacing
+                                .xLarge
                     ) {
                         header
+
+                        if let errorMessage {
+                            BuiltStatusCard(
+                                kind: .error,
+                                title:
+                                    "Photo could not be saved",
+                                message:
+                                    errorMessage,
+                                primaryActionTitle:
+                                    "Dismiss",
+                                primaryAction: {
+                                    self.errorMessage =
+                                        nil
+                                }
+                            )
+                        }
 
                         if photos.isEmpty {
                             emptyState
@@ -51,13 +88,16 @@ struct ProofView: View {
                     }
                     .padding(
                         .horizontal,
-                        20
+                        BuiltTheme.Spacing
+                            .screenHorizontal
                     )
                     .padding(.top, 18)
-                    .padding(
-                        .bottom,
-                        36
-                    )
+                    .padding(.bottom, 40)
+                }
+                .scrollIndicators(.hidden)
+
+                if isImporting {
+                    importOverlay
                 }
             }
             .toolbar(
@@ -82,7 +122,8 @@ struct ProofView: View {
 
     private var header: some View {
         HStack(
-            alignment: .bottom
+            alignment: .center,
+            spacing: BuiltTheme.Spacing.medium
         ) {
             SectionHeader(
                 eyebrow:
@@ -98,112 +139,51 @@ struct ProofView: View {
                 maxSelectionCount: 8,
                 matching: .images
             ) {
-                ZStack {
-                    Circle()
-                        .fill(
-                            BuiltTheme.accent
-                        )
-                        .frame(
-                            width: 46,
-                            height: 46
-                        )
-
-                    if isImporting {
-                        ProgressView()
-                            .tint(.black)
-                    } else {
-                        Image(
-                            systemName: "plus"
-                        )
-                        .font(
-                            .system(
-                                size: 17,
-                                weight: .bold
-                            )
-                        )
-                        .foregroundStyle(
-                            .black
-                        )
-                    }
-                }
+                Image(
+                    systemName:
+                        isImporting
+                        ? "hourglass"
+                        : "plus"
+                )
+                .font(
+                    .body
+                    .weight(.bold)
+                )
+                .foregroundStyle(.black)
+                .frame(
+                    width:
+                        BuiltTheme
+                            .minimumTapTarget,
+                    height:
+                        BuiltTheme
+                            .minimumTapTarget
+                )
+                .background(
+                    BuiltTheme.accent,
+                    in: Circle()
+                )
             }
             .disabled(isImporting)
             .accessibilityLabel(
-                "Add motivation photos"
+                isImporting
+                ? "Importing photos"
+                : "Add motivation photos"
             )
         }
     }
 
     private var emptyState: some View {
-        VStack(spacing: 22) {
-            ZStack {
-                RoundedRectangle(
-                    cornerRadius:
-                        BuiltTheme.largeRadius,
-                    style: .continuous
-                )
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            BuiltTheme.elevated,
-                            Color.black
-                        ],
-                        startPoint:
-                            .topLeading,
-                        endPoint:
-                            .bottomTrailing
-                    )
-                )
-                .frame(height: 420)
-
-                VStack(spacing: 20) {
-                    Image(
-                        systemName:
-                            "photo.badge.plus"
-                    )
-                    .font(
-                        .system(
-                            size: 62,
-                            weight: .thin
-                        )
-                    )
-                    .foregroundStyle(
-                        BuiltTheme.accent
-                    )
-
-                    VStack(spacing: 8) {
-                        Text(
-                            "Add your strongest photos"
-                        )
-                        .font(
-                            .system(
-                                size: 24,
-                                weight: .bold
-                            )
-                        )
-                        .foregroundStyle(
-                            BuiltTheme.textPrimary
-                        )
-
-                        Text(
-                            """
-                            Choose gym photos, progress photos, or any image that reminds you what smoking would take away from.
-                            """
-                        )
-                        .font(.system(size: 15))
-                        .foregroundStyle(
-                            BuiltTheme.textSecondary
-                        )
-                        .multilineTextAlignment(
-                            .center
-                        )
-                        .padding(
-                            .horizontal,
-                            24
-                        )
-                    }
-                }
-            }
+        VStack(
+            spacing: BuiltTheme.Spacing.large
+        ) {
+            BuiltEmptyState(
+                systemName:
+                    "photo.badge.plus",
+                title:
+                    "Add your strongest photos",
+                message:
+                    "Choose gym photos, progress photos, or any image that reminds you what smoking would take away from."
+            )
 
             PhotosPicker(
                 selection: $pickerItems,
@@ -215,6 +195,7 @@ struct ProofView: View {
                         systemName:
                             "photo.on.rectangle.angled"
                     )
+                    .accessibilityHidden(true)
 
                     Text("Choose photos")
 
@@ -224,6 +205,7 @@ struct ProofView: View {
                         systemName:
                             "arrow.right"
                     )
+                    .accessibilityHidden(true)
                 }
             }
             .buttonStyle(
@@ -234,49 +216,16 @@ struct ProofView: View {
     }
 
     private var heroMessage: some View {
-        VStack(
-            alignment: .leading,
-            spacing: 12
-        ) {
-            Text(
-                "YOUR BODY IS EVIDENCE"
-            )
-            .font(
-                .system(
-                    size: 11,
-                    weight: .bold
-                )
-            )
-            .tracking(1.8)
-            .foregroundStyle(
-                BuiltTheme.accent
-            )
-
-            Text(
-                """
-                You worked too hard to let a five-minute urge negotiate with your future.
-                """
-            )
-            .font(
-                .system(
-                    size: 25,
-                    weight: .semibold
-                )
-            )
-            .tracking(-0.5)
-            .foregroundStyle(
-                BuiltTheme.textPrimary
-            )
-            .fixedSize(
-                horizontal: false,
-                vertical: true
-            )
-        }
-        .frame(
-            maxWidth: .infinity,
-            alignment: .leading
+        BuiltHeroPanel(
+            eyebrow:
+                "Your body is evidence",
+            title:
+                "You worked too hard to let a five-minute urge negotiate with your future.",
+            message:
+                "\(photos.count) private motivation photo\(photos.count == 1 ? "" : "s") saved on this device.",
+            systemName:
+                "figure.strengthtraining.traditional"
         )
-        .builtCard(padding: 22)
     }
 
     private var photoGrid: some View {
@@ -295,8 +244,33 @@ struct ProofView: View {
                     )
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(
+                    photo.isHero
+                    ? "Today hero photo. \(photo.caption)"
+                    : photo.caption
+                )
+                .accessibilityHint(
+                    "Opens photo details"
+                )
             }
         }
+    }
+
+    private var importOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.24)
+                .ignoresSafeArea()
+                .accessibilityHidden(true)
+
+            BuiltLoadingCard(
+                title:
+                    "Preparing your photos",
+                message:
+                    "Optimizing images privately on this device."
+            )
+            .padding(.horizontal, 28)
+        }
+        .allowsHitTesting(true)
     }
 
     @MainActor
@@ -305,6 +279,7 @@ struct ProofView: View {
             [PhotosPickerItem]
     ) async {
         isImporting = true
+        errorMessage = nil
 
         defer {
             isImporting = false
@@ -313,6 +288,8 @@ struct ProofView: View {
 
         var shouldAssignHero =
             photos.isEmpty
+
+        var importedCount = 0
 
         for item in items {
             guard
@@ -330,58 +307,57 @@ struct ProofView: View {
                 continue
             }
 
-            let photo =
+            modelContext.insert(
                 MotivationPhoto(
-                    imageData:
-                        optimized,
+                    imageData: optimized,
                     isHero:
                         shouldAssignHero
                 )
-
-            modelContext.insert(
-                photo
             )
 
-            shouldAssignHero =
-                false
+            shouldAssignHero = false
+            importedCount += 1
         }
 
-        try? modelContext.save()
-        Haptics.success()
+        guard importedCount > 0 else {
+            errorMessage =
+                "BUILT could not read the selected image. Try another photo."
+            Haptics.warning()
+            return
+        }
+
+        do {
+            try modelContext.save()
+            Haptics.success()
+        } catch {
+            errorMessage =
+                "Your selected photos were prepared, but the local database could not save them. Please try again."
+            Haptics.warning()
+        }
     }
 }
 
 private struct PhotoThumbnail: View {
     let photo: MotivationPhoto
 
+    @Environment(\.dynamicTypeSize)
+    private var dynamicTypeSize
+
     var body: some View {
         ZStack(
             alignment: .topTrailing
         ) {
-            if let image = UIImage(
-                data: photo.imageData
-            ) {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(
-                        maxWidth: .infinity
-                    )
-                    .frame(height: 240)
-                    .clipped()
-            } else {
-                BuiltTheme.elevated
-                    .frame(height: 240)
-            }
+            photoImage
 
             LinearGradient(
                 colors: [
                     Color.clear,
-                    Color.black.opacity(0.65)
+                    Color.black.opacity(0.72)
                 ],
                 startPoint: .center,
                 endPoint: .bottom
             )
+            .accessibilityHidden(true)
 
             if photo.isHero {
                 Label(
@@ -390,15 +366,11 @@ private struct PhotoThumbnail: View {
                         "star.fill"
                 )
                 .font(
-                    .system(
-                        size: 9,
-                        weight: .bold
-                    )
+                    .caption2
+                    .weight(.bold)
                 )
-                .tracking(1)
-                .foregroundStyle(
-                    .black
-                )
+                .tracking(0.7)
+                .foregroundStyle(.black)
                 .padding(
                     .horizontal,
                     10
@@ -412,6 +384,7 @@ private struct PhotoThumbnail: View {
                     in: Capsule()
                 )
                 .padding(10)
+                .accessibilityHidden(true)
             }
 
             VStack {
@@ -419,37 +392,71 @@ private struct PhotoThumbnail: View {
 
                 Text(photo.caption)
                     .font(
-                        .system(
-                            size: 13,
-                            weight: .semibold
-                        )
+                        .subheadline
+                        .weight(.semibold)
                     )
-                    .foregroundStyle(
-                        .white
+                    .foregroundStyle(.white)
+                    .lineLimit(
+                        dynamicTypeSize
+                            .isAccessibilitySize
+                        ? 4
+                        : 2
                     )
-                    .lineLimit(2)
                     .frame(
                         maxWidth: .infinity,
                         alignment: .leading
                     )
-                    .padding(14)
+                    .padding(15)
             }
         }
+        .frame(
+            minHeight:
+                dynamicTypeSize
+                    .isAccessibilitySize
+                ? 320
+                : 240
+        )
         .clipShape(
             RoundedRectangle(
-                cornerRadius: 22,
+                cornerRadius:
+                    BuiltTheme.mediumRadius,
                 style: .continuous
             )
         )
         .overlay {
             RoundedRectangle(
-                cornerRadius: 22,
+                cornerRadius:
+                    BuiltTheme.mediumRadius,
                 style: .continuous
             )
             .stroke(
                 BuiltTheme.hairline,
                 lineWidth: 1
             )
+        }
+    }
+
+    @ViewBuilder
+    private var photoImage: some View {
+        if let image = UIImage(
+            data: photo.imageData
+        ) {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(
+                    maxWidth: .infinity
+                )
+                .frame(
+                    minHeight:
+                        dynamicTypeSize
+                            .isAccessibilitySize
+                        ? 320
+                        : 240
+                )
+                .clipped()
+        } else {
+            BuiltTheme.elevated
         }
     }
 }
@@ -474,12 +481,18 @@ struct PhotoDetailView: View {
     @State private var showingDeleteAlert =
         false
 
+    @State private var saveError:
+        String?
+
     var body: some View {
         ZStack {
             AmbientBackground()
 
             ScrollView {
-                VStack(spacing: 22) {
+                VStack(
+                    spacing:
+                        BuiltTheme.Spacing.large
+                ) {
                     image
                     captionEditor
                     heroButton
@@ -487,14 +500,16 @@ struct PhotoDetailView: View {
                 }
                 .padding(
                     .horizontal,
-                    20
+                    BuiltTheme.Spacing
+                        .screenHorizontal
                 )
                 .padding(.top, 10)
-                .padding(
-                    .bottom,
-                    36
-                )
+                .padding(.bottom, 40)
             }
+            .scrollDismissesKeyboard(
+                .interactively
+            )
+            .scrollIndicators(.hidden)
         }
         .navigationTitle("Photo")
         .navigationBarTitleDisplayMode(
@@ -526,9 +541,32 @@ struct PhotoDetailView: View {
             ) {}
         } message: {
             Text(
-                """
-                This removes the photo only from BUILT. It does not delete the original from Photos.
-                """
+                "This removes the photo only from BUILT. It does not delete the original from Photos."
+            )
+        }
+        .alert(
+            "Changes could not be saved",
+            isPresented: Binding(
+                get: {
+                    saveError != nil
+                },
+                set: { presented in
+                    if !presented {
+                        saveError = nil
+                    }
+                }
+            )
+        ) {
+            Button(
+                "OK",
+                role: .cancel
+            ) {
+                saveError = nil
+            }
+        } message: {
+            Text(
+                saveError
+                ?? "Please try again."
             )
         }
     }
@@ -542,8 +580,14 @@ struct PhotoDetailView: View {
                     .resizable()
                     .scaledToFit()
             } else {
-                BuiltTheme.elevated
-                    .frame(height: 360)
+                BuiltEmptyState(
+                    systemName:
+                        "photo",
+                    title:
+                        "Photo unavailable",
+                    message:
+                        "BUILT could not decode this saved image."
+                )
             }
         }
         .frame(maxWidth: .infinity)
@@ -567,45 +611,46 @@ struct PhotoDetailView: View {
         }
     }
 
-    private var captionEditor: some View {
+    private var captionEditor:
+        some View {
         VStack(
             alignment: .leading,
-            spacing: 12
+            spacing: BuiltTheme.Spacing.medium
         ) {
-            Text(
-                "MESSAGE TO YOURSELF"
-            )
-            .font(
-                .system(
-                    size: 11,
-                    weight: .bold
+            Text("MESSAGE TO YOURSELF")
+                .font(
+                    .caption
+                    .weight(.bold)
                 )
-            )
-            .tracking(1.6)
-            .foregroundStyle(
-                BuiltTheme.accent
-            )
+                .tracking(1.3)
+                .foregroundStyle(
+                    BuiltTheme.accent
+                )
 
             TextField(
                 "Add a caption",
                 text: $photo.caption,
                 axis: .vertical
             )
-            .lineLimit(2...5)
+            .lineLimit(2...6)
             .font(
-                .system(
-                    size: 21,
-                    weight: .semibold
-                )
+                .title3
+                .weight(.semibold)
             )
             .foregroundStyle(
                 BuiltTheme.textPrimary
             )
-            .onChange(
-                of: photo.caption
-            ) { _, _ in
-                try? modelContext.save()
+            .onSubmit {
+                save()
             }
+
+            Text(
+                "This message appears with the image during moments when your identity matters most."
+            )
+            .font(.caption)
+            .foregroundStyle(
+                BuiltTheme.textSecondary
+            )
         }
         .frame(
             maxWidth: .infinity,
@@ -623,6 +668,7 @@ struct PhotoDetailView: View {
                         systemName:
                             "star.fill"
                     )
+                    .accessibilityHidden(true)
 
                     Text(
                         "Current Today photo"
@@ -641,9 +687,9 @@ struct PhotoDetailView: View {
             } label: {
                 HStack {
                     Image(
-                        systemName:
-                            "star"
+                        systemName: "star"
                     )
+                    .accessibilityHidden(true)
 
                     Text(
                         "Use on Today screen"
@@ -655,6 +701,7 @@ struct PhotoDetailView: View {
                         systemName:
                             "arrow.right"
                     )
+                    .accessibilityHidden(true)
                 }
             }
             .buttonStyle(
@@ -664,24 +711,19 @@ struct PhotoDetailView: View {
     }
 
     private var deleteButton: some View {
-        Button(role: .destructive) {
+        Button(
+            role: .destructive
+        ) {
             showingDeleteAlert = true
         } label: {
-            Text("Delete photo")
-                .font(
-                    .system(
-                        size: 15,
-                        weight: .semibold
-                    )
-                )
-                .foregroundStyle(
-                    BuiltTheme.danger
-                )
-                .frame(
-                    maxWidth: .infinity
-                )
-                .padding(.vertical, 15)
+            Label(
+                "Delete photo",
+                systemImage: "trash"
+            )
         }
+        .buttonStyle(
+            BuiltDestructiveButtonStyle()
+        )
     }
 
     private func makeHero() {
@@ -690,8 +732,7 @@ struct PhotoDetailView: View {
                 item === photo
         }
 
-        try? modelContext.save()
-        Haptics.success()
+        save(successHaptic: true)
     }
 
     private func deletePhoto() {
@@ -710,7 +751,29 @@ struct PhotoDetailView: View {
             replacement.isHero = true
         }
 
-        try? modelContext.save()
-        dismiss()
+        do {
+            try modelContext.save()
+            dismiss()
+        } catch {
+            saveError =
+                "The photo could not be removed from the local database."
+            Haptics.warning()
+        }
+    }
+
+    private func save(
+        successHaptic: Bool = false
+    ) {
+        do {
+            try modelContext.save()
+
+            if successHaptic {
+                Haptics.success()
+            }
+        } catch {
+            saveError =
+                "BUILT could not save this photo change."
+            Haptics.warning()
+        }
     }
 }

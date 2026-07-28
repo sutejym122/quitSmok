@@ -13,27 +13,68 @@ struct RewardsView: View {
     )
     private var goals: [RewardGoal]
 
-    @State private var showingAddGoal = false
-    @State private var contributionGoal: RewardGoal?
-    @State private var goalPendingDeletion: RewardGoal?
-    @State private var celebration: CelebrationMoment?
+    @Query
+    private var cravings: [CravingEntry]
+
+    @State private var showingAddGoal =
+        false
+
+    @State private var contributionGoal:
+        RewardGoal?
+
+    @State private var goalPendingDeletion:
+        RewardGoal?
+
+    @State private var celebration:
+        CelebrationMoment?
+
+    @State private var persistenceError:
+        String?
 
     private var goalSignature: String {
         goals.map { goal in
             [
-                String(describing: goal.persistentModelID),
+                String(
+                    describing:
+                        goal.persistentModelID
+                ),
                 goal.title,
                 String(goal.targetAmount),
                 String(goal.bankedAmount),
-                String(goal.automaticSavingsBaseline),
-                String(goal.usesAutomaticSavings),
+                String(
+                    goal
+                        .automaticSavingsBaseline
+                ),
+                String(
+                    goal.usesAutomaticSavings
+                ),
                 String(goal.isActive),
-                String(goal.completedAt?.timeIntervalSince1970 ?? 0),
-                String(goal.claimedAt?.timeIntervalSince1970 ?? 0)
+                String(
+                    goal.completedAt?
+                        .timeIntervalSince1970
+                    ?? 0
+                ),
+                String(
+                    goal.claimedAt?
+                        .timeIntervalSince1970
+                    ?? 0
+                )
             ]
             .joined(separator: "-")
         }
         .joined(separator: "|")
+    }
+
+    private var normalizedCurrencyCode:
+        String {
+        let cleaned =
+            profile.currencyCode
+                .uppercased()
+                .filter(\.isLetter)
+
+        return cleaned.count == 3
+            ? cleaned
+            : "USD"
     }
 
     var body: some View {
@@ -47,37 +88,79 @@ struct RewardsView: View {
                         by: 30
                     )
                 ) { context in
-                    let totalSaved = RewardMetrics.totalSaved(
-                        profile: profile,
-                        now: context.date
-                    )
+                    let totalSaved =
+                        RewardMetrics.totalSaved(
+                            profile: profile,
+                            now: context.date
+                        )
 
                     ScrollView {
                         VStack(
                             alignment: .leading,
-                            spacing: 24
+                            spacing:
+                                BuiltTheme.Spacing
+                                    .xLarge
                         ) {
                             header
+
                             savingsHero(totalSaved)
 
+                            if let persistenceError {
+                                BuiltStatusCard(
+                                    kind: .error,
+                                    title:
+                                        "Reward changes could not be saved",
+                                    message:
+                                        persistenceError,
+                                    primaryActionTitle:
+                                        "Dismiss",
+                                    primaryAction: {
+                                        self.persistenceError =
+                                            nil
+                                    }
+                                )
+                            }
+
                             if goals.isEmpty {
-                                emptyState(totalSaved)
+                                emptyState
                             } else {
-                                activeGoalSection(totalSaved)
-                                allGoalsSection(totalSaved)
+                                activeGoalSection(
+                                    totalSaved
+                                )
+                                allGoalsSection(
+                                    totalSaved
+                                )
                             }
                         }
-                        .padding(.horizontal, 20)
+                        .padding(
+                            .horizontal,
+                            BuiltTheme.Spacing
+                                .screenHorizontal
+                        )
                         .padding(.top, 18)
-                        .padding(.bottom, 38)
+                        .padding(.bottom, 40)
                     }
+                    .scrollIndicators(.hidden)
                     .onAppear {
-                        reconcileGoals(totalSaved: totalSaved)
+                        reconcileGoals(
+                            totalSaved:
+                                totalSaved
+                        )
                     }
                     .onChange(
-                        of: Int((totalSaved * 100).rounded())
+                        of:
+                            Int(
+                                (
+                                    totalSaved
+                                    * 100
+                                )
+                                .rounded()
+                            )
                     ) { _, _ in
-                        reconcileGoals(totalSaved: totalSaved)
+                        reconcileGoals(
+                            totalSaved:
+                                totalSaved
+                        )
                     }
                 }
             }
@@ -86,34 +169,57 @@ struct RewardsView: View {
                 for: .navigationBar
             )
         }
-        .sheet(isPresented: $showingAddGoal) {
+        .sheet(
+            isPresented:
+                $showingAddGoal
+        ) {
             AddRewardGoalView(
                 profile: profile,
-                totalSaved: RewardMetrics.totalSaved(profile: profile),
-                hasActiveGoal: RewardMetrics.activeGoal(in: goals) != nil
+                totalSaved:
+                    RewardMetrics.totalSaved(
+                        profile: profile
+                    ),
+                hasActiveGoal:
+                    RewardMetrics.activeGoal(
+                        in: goals
+                    ) != nil
             )
         }
-        .sheet(item: $contributionGoal) { goal in
+        .sheet(
+            item:
+                $contributionGoal
+        ) { goal in
             ContributionSheet(
                 goal: goal,
-                currencyCode: profile.currencyCode
+                currencyCode:
+                    profile.currencyCode
             ) { amount in
-                let totalSaved = RewardMetrics.totalSaved(profile: profile)
-                RewardGoalCoordinator.addContribution(
-                    amount,
-                    to: goal,
-                    totalSaved: totalSaved
-                )
+                let totalSaved =
+                    RewardMetrics.totalSaved(
+                        profile: profile
+                    )
 
-                let becameComplete = RewardGoalCoordinator.reconcileCompletion(
-                    for: goal,
-                    totalSaved: totalSaved
-                )
+                RewardGoalCoordinator
+                    .addContribution(
+                        amount,
+                        to: goal,
+                        totalSaved:
+                            totalSaved
+                    )
 
-                try? modelContext.save()
+                let becameComplete =
+                    RewardGoalCoordinator
+                        .reconcileCompletion(
+                            for: goal,
+                            totalSaved:
+                                totalSaved
+                        )
+
+                saveChanges()
 
                 if becameComplete {
-                    celebration = .reward(goal)
+                    celebration =
+                        .reward(goal)
                     Haptics.success()
                 }
             }
@@ -121,10 +227,14 @@ struct RewardsView: View {
         .alert(
             "Delete this reward goal?",
             isPresented: Binding(
-                get: { goalPendingDeletion != nil },
-                set: { newValue in
-                    if !newValue {
-                        goalPendingDeletion = nil
+                get: {
+                    goalPendingDeletion
+                    != nil
+                },
+                set: { presented in
+                    if !presented {
+                        goalPendingDeletion =
+                            nil
                     }
                 }
             )
@@ -157,22 +267,28 @@ struct RewardsView: View {
                 .zIndex(10)
             }
         }
-        .onChange(of: goalSignature) { _, _ in
+        .onChange(
+            of: goalSignature
+        ) { _, _ in
             reconcileGoals(
-                totalSaved: RewardMetrics.totalSaved(
-                    profile: profile
-                )
+                totalSaved:
+                    RewardMetrics.totalSaved(
+                        profile: profile
+                    )
             )
         }
     }
 
     private var header: some View {
         HStack(
-            alignment: .bottom
+            alignment: .center,
+            spacing: BuiltTheme.Spacing.medium
         ) {
             SectionHeader(
-                eyebrow: "Reward system",
-                title: "Make quitting pay you."
+                eyebrow:
+                    "Reward system",
+                title:
+                    "Make quitting pay you."
             )
 
             Spacer()
@@ -182,201 +298,123 @@ struct RewardsView: View {
             } label: {
                 Image(systemName: "plus")
                     .font(
-                        .system(
-                            size: 17,
-                            weight: .bold
-                        )
+                        .body
+                        .weight(.bold)
                     )
                     .foregroundStyle(.black)
-                    .frame(width: 46, height: 46)
+                    .frame(
+                        width:
+                            BuiltTheme
+                                .minimumTapTarget,
+                        height:
+                            BuiltTheme
+                                .minimumTapTarget
+                    )
                     .background(
                         BuiltTheme.accent,
                         in: Circle()
                     )
             }
-            .accessibilityLabel("Add reward goal")
+            .buttonStyle(.plain)
+            .accessibilityLabel(
+                "Add reward goal"
+            )
         }
     }
 
     private func savingsHero(
         _ totalSaved: Double
     ) -> some View {
-        VStack(
-            alignment: .leading,
-            spacing: 18
-        ) {
-            HStack {
-                Image(systemName: "banknote.fill")
-                    .font(
-                        .system(
-                            size: 22,
-                            weight: .semibold
-                        )
-                    )
-                    .foregroundStyle(BuiltTheme.accent)
-                    .frame(width: 52, height: 52)
-                    .background(
-                        BuiltTheme.accent.opacity(0.12),
-                        in: Circle()
-                    )
-
-                Spacer()
-
-                Text("MONEY PROTECTED")
-                    .font(
-                        .system(
-                            size: 10,
-                            weight: .bold
-                        )
-                    )
-                    .tracking(1.5)
-                    .foregroundStyle(BuiltTheme.textSecondary)
-            }
-
-            Text(
+        BuiltHeroPanel(
+            eyebrow:
+                "Money protected",
+            title:
                 totalSaved.formatted(
-                    .currency(code: normalizedCurrencyCode)
-                    .precision(.fractionLength(0...2))
-                )
-            )
-            .font(
-                .system(
-                    size: 46,
-                    weight: .bold,
-                    design: .rounded
-                )
-            )
-            .tracking(-1.4)
-            .foregroundStyle(BuiltTheme.textPrimary)
-            .minimumScaleFactor(0.7)
-
-            Text(
-                "That money used to disappear in smoke. Now it can become something you can see, use, and remember."
-            )
-            .font(
-                .system(
-                    size: 15,
-                    weight: .medium
-                )
-            )
-            .foregroundStyle(BuiltTheme.textSecondary)
-            .fixedSize(
-                horizontal: false,
-                vertical: true
-            )
-        }
-        .frame(
-            maxWidth: .infinity,
-            alignment: .leading
+                    .currency(
+                        code:
+                            normalizedCurrencyCode
+                    )
+                    .precision(
+                        .fractionLength(0...2)
+                    )
+                ),
+            message:
+                "That money used to disappear in smoke. Now it can become something you can see, use, and remember.",
+            systemName:
+                "banknote.fill",
+            trailingValue:
+                "\(goals.filter { $0.completedAt != nil }.count)",
+            trailingLabel:
+                "Unlocked"
         )
-        .builtCard(padding: 22)
     }
 
-    private func emptyState(
-        _ totalSaved: Double
-    ) -> some View {
-        VStack(spacing: 20) {
-            Image(systemName: "giftcard.fill")
-                .font(
-                    .system(
-                        size: 48,
-                        weight: .light
-                    )
-                )
-                .foregroundStyle(BuiltTheme.accent)
-
-            VStack(spacing: 9) {
-                Text("Create your first reward")
-                    .font(
-                        .system(
-                            size: 24,
-                            weight: .bold
-                        )
-                    )
-                    .foregroundStyle(BuiltTheme.textPrimary)
-
-                Text(
-                    "Choose something worth earning. BUILT can automatically move your calculated cigarette savings toward it."
-                )
-                .font(.system(size: 14))
-                .foregroundStyle(BuiltTheme.textSecondary)
-                .multilineTextAlignment(.center)
-            }
-
-            Button {
+    private var emptyState: some View {
+        BuiltEmptyState(
+            systemName: "giftcard.fill",
+            title:
+                "Create your first reward",
+            message:
+                "Choose something worth earning. BUILT can automatically move your calculated cigarette savings toward it.",
+            actionTitle:
+                "Set a reward goal",
+            action: {
                 showingAddGoal = true
-            } label: {
-                HStack {
-                    Text("Set a reward goal")
-                    Spacer()
-                    Image(systemName: "arrow.right")
-                }
             }
-            .buttonStyle(BuiltPrimaryButtonStyle())
-        }
-        .frame(maxWidth: .infinity)
-        .builtCard(padding: 24)
+        )
     }
 
     @ViewBuilder
     private func activeGoalSection(
         _ totalSaved: Double
     ) -> some View {
-        if let activeGoal = RewardMetrics.activeGoal(in: goals) {
+        if let activeGoal =
+            RewardMetrics.activeGoal(
+                in: goals
+            ) {
             VStack(
                 alignment: .leading,
-                spacing: 14
+                spacing:
+                    BuiltTheme.Spacing.medium
             ) {
                 SectionHeader(
-                    eyebrow: "Current target",
-                    title: "What you’re earning"
+                    eyebrow:
+                        "Current target",
+                    title:
+                        "What you’re earning"
                 )
 
                 goalCard(
                     activeGoal,
-                    totalSaved: totalSaved
+                    totalSaved:
+                        totalSaved
                 )
             }
         } else {
             VStack(
                 alignment: .leading,
-                spacing: 14
+                spacing:
+                    BuiltTheme.Spacing.medium
             ) {
                 SectionHeader(
-                    eyebrow: "Current target",
-                    title: "Choose what comes next"
+                    eyebrow:
+                        "Current target",
+                    title:
+                        "Choose what comes next"
                 )
 
-                VStack(
-                    alignment: .leading,
-                    spacing: 14
-                ) {
-                    Text("No active reward")
-                        .font(
-                            .system(
-                                size: 20,
-                                weight: .semibold
-                            )
-                        )
-                        .foregroundStyle(BuiltTheme.textPrimary)
-
-                    Text(
-                        "Activate any unfinished goal below, or create a new one. Only one goal automatically receives future savings at a time."
-                    )
-                    .font(.system(size: 14))
-                    .foregroundStyle(BuiltTheme.textSecondary)
-
-                    Button {
+                BuiltStatusCard(
+                    kind: .neutral,
+                    title:
+                        "No active reward",
+                    message:
+                        "Activate any unfinished goal below, or create a new one. Only one goal automatically receives future savings at a time.",
+                    primaryActionTitle:
+                        "Add another goal",
+                    primaryAction: {
                         showingAddGoal = true
-                    } label: {
-                        Label(
-                            "Add another goal",
-                            systemImage: "plus"
-                        )
                     }
-                    .buttonStyle(BuiltSecondaryButtonStyle())
-                }
-                .builtCard()
+                )
             }
         }
     }
@@ -384,36 +422,24 @@ struct RewardsView: View {
     private func allGoalsSection(
         _ totalSaved: Double
     ) -> some View {
-        let remainingGoals = goals.filter {
-            !$0.isActive || $0.completedAt != nil
-        }
-
-        return VStack(
+        VStack(
             alignment: .leading,
-            spacing: 14
+            spacing:
+                BuiltTheme.Spacing.medium
         ) {
             SectionHeader(
-                eyebrow: "Reward vault",
-                title: "Every goal",
-                trailingText: "\(goals.count)"
+                eyebrow: "Your goals",
+                title: "Everything you’re building",
+                trailingText:
+                    "\(goals.count)"
             )
 
-            if remainingGoals.isEmpty {
-                Text(
-                    "Your active goal is the only reward here right now."
-                )
-                .font(.system(size: 14))
-                .foregroundStyle(BuiltTheme.textSecondary)
-                .frame(
-                    maxWidth: .infinity,
-                    alignment: .leading
-                )
-                .builtCard()
-            } else {
-                ForEach(remainingGoals) { goal in
+            LazyVStack(spacing: 12) {
+                ForEach(goals) { goal in
                     goalCard(
                         goal,
-                        totalSaved: totalSaved
+                        totalSaved:
+                            totalSaved
                     )
                 }
             }
@@ -427,31 +453,34 @@ struct RewardsView: View {
         RewardGoalCard(
             goal: goal,
             totalSaved: totalSaved,
-            currencyCode: profile.currencyCode,
+            currencyCode:
+                profile.currencyCode,
             onAddContribution: {
                 contributionGoal = goal
             },
             onActivate: {
-                RewardGoalCoordinator.activate(
-                    goal,
-                    among: goals,
-                    totalSaved: totalSaved
-                )
-                try? modelContext.save()
-                Haptics.selection()
+                RewardGoalCoordinator
+                    .activate(
+                        goal,
+                        among: goals,
+                        totalSaved:
+                            totalSaved
+                    )
+                saveChanges()
             },
             onPause: {
-                RewardGoalCoordinator.pause(
-                    goal,
-                    totalSaved: totalSaved
-                )
-                try? modelContext.save()
-                Haptics.selection()
+                RewardGoalCoordinator
+                    .pause(
+                        goal,
+                        totalSaved:
+                            totalSaved
+                    )
+                saveChanges()
             },
             onClaim: {
-                RewardGoalCoordinator.markClaimed(goal)
-                try? modelContext.save()
-                Haptics.success()
+                RewardGoalCoordinator
+                    .markClaimed(goal)
+                saveChanges()
             },
             onDelete: {
                 goalPendingDeletion = goal
@@ -459,49 +488,97 @@ struct RewardsView: View {
         )
     }
 
-    private var normalizedCurrencyCode: String {
-        let cleaned = profile.currencyCode
-            .uppercased()
-            .filter(\.isLetter)
-
-        return cleaned.count == 3 ? cleaned : "USD"
-    }
-
     private func reconcileGoals(
         totalSaved: Double
     ) {
-        var newlyCompleted: RewardGoal?
+        var newCelebration:
+            CelebrationMoment?
 
         for goal in goals {
-            if RewardGoalCoordinator.reconcileCompletion(
-                for: goal,
-                totalSaved: totalSaved
-            ) {
-                newlyCompleted = goal
+            let becameComplete =
+                RewardGoalCoordinator
+                    .reconcileCompletion(
+                        for: goal,
+                        totalSaved:
+                            totalSaved
+                    )
+
+            if becameComplete
+                && newCelebration == nil {
+                newCelebration =
+                    .reward(goal)
             }
         }
 
-        guard let newlyCompleted else {
-            return
-        }
+        saveChanges()
 
-        try? modelContext.save()
-        celebration = .reward(newlyCompleted)
-        Haptics.success()
+        if let newCelebration,
+           celebration == nil {
+            celebration =
+                newCelebration
+        }
     }
 
     private func deletePendingGoal() {
-        guard let goal = goalPendingDeletion else {
+        guard
+            let goal =
+                goalPendingDeletion
+        else {
             return
         }
 
+        let wasActive = goal.isActive
+
         modelContext.delete(goal)
-        try? modelContext.save()
         goalPendingDeletion = nil
+
+        if wasActive,
+           let replacement =
+            goals.first(
+                where: {
+                    $0 !== goal
+                    && $0.completedAt
+                        == nil
+                }
+            ) {
+            RewardGoalCoordinator
+                .activate(
+                    replacement,
+                    among: goals.filter {
+                        $0 !== goal
+                    },
+                    totalSaved:
+                        RewardMetrics
+                            .totalSaved(
+                                profile:
+                                    profile
+                            )
+                )
+        }
+
+        saveChanges()
+    }
+
+    private func saveChanges() {
+        do {
+            try modelContext.save()
+            persistenceError = nil
+            WidgetSyncService
+                .sync(
+                    profile: profile,
+                    cravings: cravings,
+                    rewardGoals: goals
+                )
+        } catch {
+            persistenceError =
+                "BUILT could not update the local reward database. Your previous saved state remains available."
+            Haptics.warning()
+        }
     }
 }
 
-private struct ContributionSheet: View {
+private struct ContributionSheet:
+    View {
     let goal: RewardGoal
     let currencyCode: String
     let onSave: (Double) -> Void
@@ -509,14 +586,19 @@ private struct ContributionSheet: View {
     @Environment(\.dismiss)
     private var dismiss
 
-    @State private var amount = 10.0
+    @State private var amount =
+        10.0
 
-    private var normalizedCurrencyCode: String {
-        let cleaned = currencyCode
-            .uppercased()
-            .filter(\.isLetter)
+    private var normalizedCurrencyCode:
+        String {
+        let cleaned =
+            currencyCode
+                .uppercased()
+                .filter(\.isLetter)
 
-        return cleaned.count == 3 ? cleaned : "USD"
+        return cleaned.count == 3
+            ? cleaned
+            : "USD"
     }
 
     var body: some View {
@@ -524,137 +606,114 @@ private struct ContributionSheet: View {
             ZStack {
                 AmbientBackground()
 
-                VStack(
-                    alignment: .leading,
-                    spacing: 24
-                ) {
+                ScrollView {
                     VStack(
                         alignment: .leading,
-                        spacing: 10
+                        spacing:
+                            BuiltTheme.Spacing
+                                .xLarge
                     ) {
-                        Text("MANUAL CONTRIBUTION")
-                            .font(
-                                .system(
-                                    size: 11,
-                                    weight: .bold
-                                )
-                            )
-                            .tracking(1.7)
-                            .foregroundStyle(BuiltTheme.accent)
-
-                        Text(goal.title)
-                            .font(
-                                .system(
-                                    size: 32,
-                                    weight: .bold
-                                )
-                            )
-                            .tracking(-0.9)
-                            .foregroundStyle(BuiltTheme.textPrimary)
-                    }
-
-                    VStack(
-                        alignment: .leading,
-                        spacing: 14
-                    ) {
-                        Text("Amount")
-                            .font(
-                                .system(
-                                    size: 14,
-                                    weight: .semibold
-                                )
-                            )
-                            .foregroundStyle(BuiltTheme.textSecondary)
+                        BuiltHeroPanel(
+                            eyebrow:
+                                "Manual contribution",
+                            title: goal.title,
+                            message:
+                                "Add money you deliberately redirected toward this reward.",
+                            systemName:
+                                goal.iconName
+                        )
 
                         HStack(
-                            alignment: .firstTextBaseline
+                            alignment:
+                                .firstTextBaseline,
+                            spacing:
+                                BuiltTheme.Spacing
+                                    .small
                         ) {
+                            Text(
+                                normalizedCurrencyCode
+                            )
+                            .font(
+                                .subheadline
+                                .weight(.bold)
+                                .monospaced()
+                            )
+                            .foregroundStyle(
+                                BuiltTheme
+                                    .textSecondary
+                            )
+
                             TextField(
                                 "10",
                                 value: $amount,
-                                format: .number.precision(
-                                    .fractionLength(0...2)
-                                )
+                                format:
+                                    .number.precision(
+                                        .fractionLength(
+                                            0...2
+                                        )
+                                    )
                             )
-                            .keyboardType(.decimalPad)
+                            .keyboardType(
+                                .decimalPad
+                            )
                             .font(
-                                .system(
-                                    size: 44,
-                                    weight: .bold,
-                                    design: .rounded
-                                )
+                                .largeTitle
+                                .weight(.bold)
+                                .monospacedDigit()
                             )
-                            .foregroundStyle(BuiltTheme.textPrimary)
-
-                            Text(normalizedCurrencyCode)
-                                .font(
-                                    .system(
-                                        size: 14,
-                                        weight: .bold,
-                                        design: .monospaced
-                                    )
-                                )
-                                .foregroundStyle(BuiltTheme.textSecondary)
+                            .foregroundStyle(
+                                BuiltTheme
+                                    .textPrimary
+                            )
                         }
-                    }
-                    .builtCard(padding: 20)
+                        .builtCard(padding: 22)
 
-                    HStack(spacing: 10) {
-                        ForEach([5.0, 10.0, 25.0, 50.0], id: \.self) { preset in
-                            Button {
-                                amount = preset
-                                Haptics.selection()
-                            } label: {
+                        Button {
+                            guard amount > 0 else {
+                                Haptics.warning()
+                                return
+                            }
+
+                            onSave(amount)
+                            dismiss()
+                        } label: {
+                            HStack {
                                 Text(
-                                    preset.formatted(
-                                        .currency(code: normalizedCurrencyCode)
-                                        .precision(.fractionLength(0))
-                                    )
+                                    "Add contribution"
                                 )
-                                .font(
-                                    .system(
-                                        size: 13,
-                                        weight: .semibold
-                                    )
+                                Spacer()
+                                Image(
+                                    systemName:
+                                        "arrow.right"
                                 )
-                                .foregroundStyle(BuiltTheme.textPrimary)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 12)
-                                .background(
-                                    Color.white.opacity(0.07),
-                                    in: Capsule()
+                                .accessibilityHidden(
+                                    true
                                 )
                             }
-                            .buttonStyle(.plain)
                         }
+                        .buttonStyle(
+                            BuiltPrimaryButtonStyle()
+                        )
+                        .disabled(amount <= 0)
                     }
-
-                    Spacer()
-
-                    Button {
-                        guard amount > 0 else {
-                            return
-                        }
-
-                        onSave(amount)
-                        dismiss()
-                    } label: {
-                        HStack {
-                            Text("Add contribution")
-                            Spacer()
-                            Image(systemName: "arrow.right")
-                        }
-                    }
-                    .buttonStyle(BuiltPrimaryButtonStyle())
-                    .disabled(amount <= 0)
-                    .opacity(amount > 0 ? 1 : 0.45)
+                    .padding(
+                        .horizontal,
+                        BuiltTheme.Spacing
+                            .screenHorizontal
+                    )
+                    .padding(.top, 18)
+                    .padding(.bottom, 40)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 24)
-                .padding(.bottom, 30)
+                .scrollDismissesKeyboard(
+                    .interactively
+                )
             }
-            .navigationTitle("Add progress")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(
+                "Contribution"
+            )
+            .navigationBarTitleDisplayMode(
+                .inline
+            )
             .toolbarBackground(
                 .ultraThinMaterial,
                 for: .navigationBar
@@ -664,14 +723,19 @@ private struct ContributionSheet: View {
                 for: .navigationBar
             )
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(
+                    placement:
+                        .topBarLeading
+                ) {
                     Button("Cancel") {
                         dismiss()
                     }
-                    .foregroundStyle(BuiltTheme.textSecondary)
+                    .foregroundStyle(
+                        BuiltTheme
+                            .textSecondary
+                    )
                 }
             }
         }
-        .presentationDetents([.medium, .large])
     }
 }

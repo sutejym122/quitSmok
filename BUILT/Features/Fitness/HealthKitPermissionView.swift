@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct HealthKitPermissionView: View {
     let isAvailable: Bool
@@ -6,10 +7,16 @@ struct HealthKitPermissionView: View {
     let errorMessage: String?
     let onConnect: () -> Void
 
+    @Environment(\.openURL)
+    private var openURL
+
+    @Environment(\.dynamicTypeSize)
+    private var dynamicTypeSize
+
     var body: some View {
         VStack(
             alignment: .leading,
-            spacing: 26
+            spacing: BuiltTheme.Spacing.xLarge
         ) {
             permissionHero
             privacyCard
@@ -17,10 +24,12 @@ struct HealthKitPermissionView: View {
             Button {
                 onConnect()
             } label: {
-                HStack {
+                HStack(spacing: 12) {
                     Image(
-                        systemName: "heart.text.clipboard"
+                        systemName:
+                            "heart.text.clipboard"
                     )
+                    .accessibilityHidden(true)
 
                     Text(
                         isWorking
@@ -33,10 +42,12 @@ struct HealthKitPermissionView: View {
                     if isWorking {
                         ProgressView()
                             .tint(.black)
+                            .accessibilityHidden(true)
                     } else {
                         Image(
                             systemName: "arrow.right"
                         )
+                        .accessibilityHidden(true)
                     }
                 }
             }
@@ -46,25 +57,33 @@ struct HealthKitPermissionView: View {
             .disabled(
                 !isAvailable || isWorking
             )
+            .accessibilityHint(
+                isAvailable
+                ? "Shows the Apple Health permission screen"
+                : "Apple Health is unavailable on this device"
+            )
 
             if let errorMessage {
-                Text(errorMessage)
-                    .font(
-                        .system(
-                            size: 13,
-                            weight: .medium
-                        )
-                    )
-                    .foregroundStyle(
-                        BuiltTheme.danger
-                    )
-                    .frame(
-                        maxWidth: .infinity,
-                        alignment: .center
-                    )
-                    .multilineTextAlignment(
-                        .center
-                    )
+                BuiltStatusCard(
+                    kind: .error,
+                    title:
+                        "Apple Health needs attention",
+                    message: errorMessage,
+                    primaryActionTitle:
+                        "Open Settings",
+                    primaryAction: openAppSettings,
+                    secondaryActionTitle:
+                        "Try again",
+                    secondaryAction: onConnect
+                )
+            } else if !isAvailable {
+                BuiltStatusCard(
+                    kind: .warning,
+                    title:
+                        "Apple Health is unavailable",
+                    message:
+                        "Run BUILT on an iPhone with the Health app to connect workout data."
+                )
             }
         }
     }
@@ -72,61 +91,50 @@ struct HealthKitPermissionView: View {
     private var permissionHero: some View {
         VStack(
             alignment: .leading,
-            spacing: 22
+            spacing: BuiltTheme.Spacing.large
         ) {
-            Image(
-                systemName: "heart.fill"
-            )
-            .font(
-                .system(
-                    size: 28,
-                    weight: .semibold
+            Image(systemName: "heart.fill")
+                .font(.title2.weight(.semibold))
+                .foregroundStyle(
+                    BuiltTheme.accent
                 )
-            )
-            .foregroundStyle(
-                BuiltTheme.accent
-            )
-            .frame(
-                width: 62,
-                height: 62
-            )
-            .background(
-                BuiltTheme.accent.opacity(0.12),
-                in: Circle()
-            )
+                .frame(
+                    width: 62,
+                    height: 62
+                )
+                .background(
+                    BuiltTheme.accent.opacity(0.12),
+                    in: Circle()
+                )
+                .accessibilityHidden(true)
 
             Text(
-                """
-                Your training is
-                proof of the change.
-                """
+                "Your training is proof of the change."
             )
             .font(
-                .system(
-                    size: 38,
-                    weight: .bold
-                )
+                dynamicTypeSize.isAccessibilitySize
+                ? .title.weight(.bold)
+                : .largeTitle.weight(.bold)
             )
-            .tracking(-1.2)
+            .tracking(
+                dynamicTypeSize.isAccessibilitySize
+                ? 0
+                : -1
+            )
             .foregroundStyle(
                 BuiltTheme.textPrimary
+            )
+            .fixedSize(
+                horizontal: false,
+                vertical: true
             )
 
             Text(
                 isAvailable
-                ? """
-                Connect Apple Health to see every workout completed by the version of you that does not smoke.
-                """
-                : """
-                Health data is not available on this device. Run BUILT on an iPhone with the Health app.
-                """
+                ? "Connect Apple Health to see every workout completed by the version of you that does not smoke."
+                : "Health data is not available on this device. Run BUILT on an iPhone with the Health app."
             )
-            .font(
-                .system(
-                    size: 16,
-                    weight: .medium
-                )
-            )
+            .font(.body)
             .foregroundStyle(
                 BuiltTheme.textSecondary
             )
@@ -140,22 +148,23 @@ struct HealthKitPermissionView: View {
             alignment: .leading
         )
         .builtCard(padding: 24)
+        .accessibilityElement(
+            children: .combine
+        )
     }
 
     private var privacyCard: some View {
         VStack(
             alignment: .leading,
-            spacing: 16
+            spacing: BuiltTheme.Spacing.medium
         ) {
             Label(
                 "Private by design",
                 systemImage: "lock.shield.fill"
             )
             .font(
-                .system(
-                    size: 17,
-                    weight: .semibold
-                )
+                .headline
+                .weight(.semibold)
             )
             .foregroundStyle(
                 BuiltTheme.textPrimary
@@ -173,7 +182,8 @@ struct HealthKitPermissionView: View {
 
             permissionRow(
                 icon: "clock.fill",
-                text: "Reads Apple Exercise Time"
+                text:
+                    "Reads Apple Exercise Time"
             )
 
             Divider()
@@ -182,39 +192,62 @@ struct HealthKitPermissionView: View {
                 )
 
             Text(
-                """
-                BUILT never writes to Apple Health and does not upload your health data.
-                """
+                "BUILT never writes to Apple Health and does not upload your health data."
             )
-            .font(.system(size: 13))
+            .font(.footnote)
             .foregroundStyle(
                 BuiltTheme.textSecondary
             )
+            .fixedSize(
+                horizontal: false,
+                vertical: true
+            )
         }
         .builtCard()
+        .accessibilityElement(
+            children: .combine
+        )
     }
 
     private func permissionRow(
         icon: String,
         text: String
     ) -> some View {
-        HStack(spacing: 12) {
+        HStack(
+            alignment: .firstTextBaseline,
+            spacing: 12
+        ) {
             Image(systemName: icon)
                 .foregroundStyle(
                     BuiltTheme.accent
                 )
                 .frame(width: 24)
+                .accessibilityHidden(true)
 
             Text(text)
                 .font(
-                    .system(
-                        size: 14,
-                        weight: .medium
-                    )
+                    .subheadline
+                    .weight(.medium)
                 )
                 .foregroundStyle(
-                    BuiltTheme.textPrimary.opacity(0.88)
+                    BuiltTheme.textPrimary
+                        .opacity(0.90)
+                )
+                .fixedSize(
+                    horizontal: false,
+                    vertical: true
                 )
         }
+    }
+
+    private func openAppSettings() {
+        guard let settingsURL = URL(
+            string:
+                UIApplication.openSettingsURLString
+        ) else {
+            return
+        }
+
+        openURL(settingsURL)
     }
 }

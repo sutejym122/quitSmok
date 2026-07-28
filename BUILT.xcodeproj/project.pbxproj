@@ -10,6 +10,7 @@
 		4E6CEE9F301403A3000B94DF /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4E6CEE9E301403A3000B94DF /* WidgetKit.framework */; };
 		4E6CEEA1301403A3000B94DF /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4E6CEEA0301403A3000B94DF /* SwiftUI.framework */; };
 		4E6CEEB0301403A4000B94DF /* BUILTWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4E6CEE9C301403A3000B94DF /* BUILTWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		4E89B0AD3017DC1500061BF3 /* Products.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 4E89B0AC3017DC1500061BF3 /* Products.storekit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -55,6 +56,7 @@
 		4E6CEE9E301403A3000B94DF /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		4E6CEEA0301403A3000B94DF /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		4E6CEEB73014054F000B94DF /* BUILTWidgetsExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BUILTWidgetsExtension.entitlements; sourceTree = "<group>"; };
+		4E89B0AC3017DC1500061BF3 /* Products.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Products.storekit; sourceTree = "<group>"; };
 		4ED0DBAF3013F3FE00C9EF74 /* BUILT.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BUILT.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4ED0DBBF3013F3FF00C9EF74 /* BUILTTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BUILTTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		4ED0DBC93013F3FF00C9EF74 /* BUILTUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BUILTUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -75,7 +77,7 @@
 			);
 			target = 4ED0DBAE3013F3FE00C9EF74 /* BUILT */;
 		};
-		4E6CEFDB3017D19F000B94DF /* Exceptions for "BUILT" folder in "BUILTWidgetsExtension" target */ = {
+		4E89B0AF3017EABE00061BF3 /* Exceptions for "BUILT" folder in "BUILTWidgetsExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Shared/BuiltSharedConstants.swift,
@@ -100,7 +102,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				4E6CEEB930140571000B94DF /* Exceptions for "BUILT" folder in "BUILT" target */,
-				4E6CEFDB3017D19F000B94DF /* Exceptions for "BUILT" folder in "BUILTWidgetsExtension" target */,
+				4E89B0AF3017EABE00061BF3 /* Exceptions for "BUILT" folder in "BUILTWidgetsExtension" target */,
 			);
 			path = BUILT;
 			sourceTree = "<group>";
@@ -163,6 +165,7 @@
 		4ED0DBA63013F3FE00C9EF74 = {
 			isa = PBXGroup;
 			children = (
+				4E89B0AC3017DC1500061BF3 /* Products.storekit */,
 				4E6CEEB73014054F000B94DF /* BUILTWidgetsExtension.entitlements */,
 				4ED0DBB13013F3FE00C9EF74 /* BUILT */,
 				4ED0DBC23013F3FF00C9EF74 /* BUILTTests */,
@@ -339,6 +342,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4E89B0AD3017DC1500061BF3 /* Products.storekit in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -597,6 +601,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = BUILT/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "BUILT reads your workout and active energy data to show the training you have completed since quitting smoking.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -630,6 +635,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = BUILT/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "BUILT reads your workout and active energy data to show the training you have completed since quitting smoking.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

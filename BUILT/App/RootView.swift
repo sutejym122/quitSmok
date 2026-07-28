@@ -137,7 +137,7 @@ private struct MainTabView: View {
                     )
                 }
 
-            ProofView()
+            ProofAccessView()
                 .tag(AppTab.proof)
                 .tabItem {
                     Label(
@@ -146,7 +146,7 @@ private struct MainTabView: View {
                     )
                 }
 
-            FitnessView(profile: profile)
+            FitnessAccessView(profile: profile)
                 .tag(AppTab.fitness)
                 .tabItem {
                     Label(
