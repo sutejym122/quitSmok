@@ -22,6 +22,9 @@ struct TodayView: View {
     @State private var showingSettings =
         false
 
+    @Environment(\.dynamicTypeSize)
+    private var dynamicTypeSize
+
     private var heroPhoto: MotivationPhoto? {
         photos.first(
             where: { $0.isHero }
@@ -33,6 +36,28 @@ struct TodayView: View {
             $0.outcome == .defeated
         }
         .count
+    }
+
+    private var metricColumns: [GridItem] {
+        if dynamicTypeSize.isAccessibilitySize {
+            return [
+                GridItem(
+                    .flexible(),
+                    spacing: 12
+                )
+            ]
+        }
+
+        return [
+            GridItem(
+                .flexible(),
+                spacing: 12
+            ),
+            GridItem(
+                .flexible(),
+                spacing: 12
+            )
+        ]
     }
 
     var body: some View {
@@ -52,7 +77,11 @@ struct TodayView: View {
                     )
 
                     ScrollView {
-                        VStack(spacing: 26) {
+                        VStack(
+                            spacing:
+                                BuiltTheme.Spacing
+                                    .xLarge
+                        ) {
                             header
 
                             hero(
@@ -69,14 +98,13 @@ struct TodayView: View {
                         }
                         .padding(
                             .horizontal,
-                            20
+                            BuiltTheme.Spacing
+                                .screenHorizontal
                         )
                         .padding(.top, 12)
-                        .padding(
-                            .bottom,
-                            34
-                        )
+                        .padding(.bottom, 38)
                     }
+                    .scrollIndicators(.hidden)
                 }
             }
             .toolbar(
@@ -101,75 +129,23 @@ struct TodayView: View {
     }
 
     private var header: some View {
-        HStack {
-            VStack(
-                alignment: .leading,
-                spacing: 5
-            ) {
-                Text("BUILT.")
-                    .font(
-                        .system(
-                            size: 18,
-                            weight: .black
-                        )
-                    )
-                    .tracking(2.2)
-                    .foregroundStyle(
-                        BuiltTheme.textPrimary
-                    )
-
-                Text(
-                    "BUILT, NOT BURNED"
-                )
-                .font(
-                    .system(
-                        size: 10,
-                        weight: .semibold
-                    )
-                )
-                .tracking(1.5)
-                .foregroundStyle(
-                    BuiltTheme.accent
-                )
-            }
-
+        HStack(
+            alignment: .center,
+            spacing: BuiltTheme.Spacing.medium
+        ) {
+            BuiltBrandLockup()
             Spacer()
 
-            Button {
+            BuiltIconButton(
+                systemName:
+                    "slider.horizontal.3",
+                accessibilityLabel:
+                    "Open settings",
+                accessibilityHint:
+                    "Shows quit settings, notifications, privacy, and BUILT Pro"
+            ) {
                 showingSettings = true
-            } label: {
-                Image(
-                    systemName:
-                        "slider.horizontal.3"
-                )
-                .font(
-                    .system(
-                        size: 16,
-                        weight: .semibold
-                    )
-                )
-                .foregroundStyle(
-                    BuiltTheme.textPrimary
-                )
-                .frame(
-                    width: 44,
-                    height: 44
-                )
-                .background(
-                    .ultraThinMaterial,
-                    in: Circle()
-                )
-                .overlay {
-                    Circle()
-                        .stroke(
-                            BuiltTheme.hairline,
-                            lineWidth: 1
-                        )
-                }
             }
-            .accessibilityLabel(
-                "Open settings"
-            )
         }
     }
 
@@ -184,91 +160,127 @@ struct TodayView: View {
         ) {
             VStack(
                 alignment: .leading,
-                spacing: 14
+                spacing: BuiltTheme.Spacing.medium
             ) {
                 Text("SMOKE-FREE")
                     .font(
-                        .system(
-                            size: 11,
-                            weight: .bold
-                        )
+                        .caption
+                        .weight(.bold)
                     )
-                    .tracking(2.2)
+                    .tracking(
+                        dynamicTypeSize.isAccessibilitySize
+                        ? 0.8
+                        : 1.8
+                    )
                     .foregroundStyle(
                         BuiltTheme.accent
                     )
 
-                HStack(
-                    alignment:
-                        .firstTextBaseline,
-                    spacing: 10
-                ) {
-                    Text(
-                        "\(metrics.days)"
-                    )
-                    .font(
-                        .system(
-                            size: 78,
-                            weight: .bold,
-                            design: .rounded
-                        )
-                    )
-                    .tracking(-4)
-                    .foregroundStyle(
-                        BuiltTheme.textPrimary
-                    )
-
-                    Text(
-                        metrics.dayLabel
-                    )
-                    .font(
-                        .system(
-                            size: 16,
-                            weight: .bold
-                        )
-                    )
-                    .tracking(1.2)
-                    .foregroundStyle(
-                        BuiltTheme.textSecondary
-                    )
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(
+                        alignment: .leading,
+                        spacing: BuiltTheme.Spacing.xSmall
+                    ) {
+                        dayCount(metrics)
+                        dayLabel(metrics)
+                    }
+                } else {
+                    HStack(
+                        alignment: .firstTextBaseline,
+                        spacing: 10
+                    ) {
+                        dayCount(metrics)
+                        dayLabel(metrics)
+                    }
                 }
 
-                Text(
-                    metrics.timerText
-                )
-                .font(
-                    .system(
-                        size: 28,
-                        weight: .semibold,
-                        design: .monospaced
+                Text(metrics.timerText)
+                    .font(
+                        .title2
+                        .weight(.semibold)
+                        .monospacedDigit()
                     )
-                )
-                .foregroundStyle(
-                    BuiltTheme.textPrimary
-                        .opacity(0.92)
-                )
+                    .foregroundStyle(
+                        BuiltTheme.textPrimary
+                            .opacity(0.94)
+                    )
 
                 Text(
                     heroPhoto?.caption
-                    ?? """
-                    Add a gym photo in Proof and make your progress impossible to ignore.
-                    """
+                    ?? "Add a gym photo in Proof and make your progress impossible to ignore."
                 )
                 .font(
-                    .system(
-                        size: 15,
-                        weight: .medium
-                    )
+                    .subheadline
+                    .weight(.medium)
                 )
                 .foregroundStyle(
                     BuiltTheme.textPrimary
-                        .opacity(0.82)
+                        .opacity(0.84)
                 )
-                .lineLimit(2)
-                .padding(.top, 2)
+                .lineLimit(
+                    dynamicTypeSize.isAccessibilitySize
+                    ? nil
+                    : 3
+                )
+                .fixedSize(
+                    horizontal: false,
+                    vertical: true
+                )
             }
-            .padding(24)
+            .padding(
+                dynamicTypeSize.isAccessibilitySize
+                ? 20
+                : 24
+            )
         }
+        .accessibilityElement(
+            children: .ignore
+        )
+        .accessibilityLabel(
+            "\(metrics.days) \(metrics.dayLabel.lowercased()) smoke-free"
+        )
+        .accessibilityValue(
+            "\(metrics.hours) hours, \(metrics.minutes) minutes, \(metrics.seconds) seconds into the current day. \(heroPhoto?.caption ?? profile.identityStatement)"
+        )
+    }
+
+    private func dayCount(
+        _ metrics: QuitMetrics
+    ) -> some View {
+        Text("\(metrics.days)")
+            .font(
+                dynamicTypeSize.isAccessibilitySize
+                ? .largeTitle
+                    .weight(.bold)
+                    .monospacedDigit()
+                : .system(
+                    size: 78,
+                    weight: .bold,
+                    design: .rounded
+                )
+            )
+            .tracking(
+                dynamicTypeSize.isAccessibilitySize
+                ? 0
+                : -4
+            )
+            .foregroundStyle(
+                BuiltTheme.textPrimary
+            )
+    }
+
+    private func dayLabel(
+        _ metrics: QuitMetrics
+    ) -> some View {
+        Text(metrics.dayLabel)
+            .font(
+                .headline
+                .weight(.bold)
+            )
+            .tracking(1.0)
+            .foregroundStyle(
+                BuiltTheme.textSecondary
+            )
     }
 
     private var cravingButton: some View {
@@ -280,6 +292,7 @@ struct TodayView: View {
                     systemName:
                         "bolt.heart.fill"
                 )
+                .accessibilityHidden(true)
 
                 Text("I’m craving")
 
@@ -289,10 +302,14 @@ struct TodayView: View {
                     systemName:
                         "arrow.up.right"
                 )
+                .accessibilityHidden(true)
             }
         }
         .buttonStyle(
             BuiltPrimaryButtonStyle()
+        )
+        .accessibilityHint(
+            "Immediately starts the free Craving Rescue flow"
         )
     }
 
@@ -300,16 +317,7 @@ struct TodayView: View {
         metrics: QuitMetrics
     ) -> some View {
         LazyVGrid(
-            columns: [
-                GridItem(
-                    .flexible(),
-                    spacing: 12
-                ),
-                GridItem(
-                    .flexible(),
-                    spacing: 12
-                )
-            ],
+            columns: metricColumns,
             spacing: 12
         ) {
             MetricCard(
@@ -367,9 +375,7 @@ struct TodayView: View {
                 footnote:
                     profile.slipCount == 0
                     ? "No recorded slips"
-                    : """
-                    \(profile.slipCount) recorded slip\(profile.slipCount == 1 ? "" : "s")
-                    """
+                    : "\(profile.slipCount) recorded slip\(profile.slipCount == 1 ? "" : "s")"
             )
         }
     }
@@ -377,16 +383,14 @@ struct TodayView: View {
     private var identityCard: some View {
         VStack(
             alignment: .leading,
-            spacing: 18
+            spacing: BuiltTheme.Spacing.medium
         ) {
             Text("YOUR REASON")
                 .font(
-                    .system(
-                        size: 11,
-                        weight: .bold
-                    )
+                    .caption
+                    .weight(.bold)
                 )
-                .tracking(1.8)
+                .tracking(1.5)
                 .foregroundStyle(
                     BuiltTheme.accent
                 )
@@ -395,12 +399,14 @@ struct TodayView: View {
                 "“\(profile.identityStatement)”"
             )
             .font(
-                .system(
-                    size: 26,
-                    weight: .semibold
-                )
+                .title2
+                .weight(.semibold)
             )
-            .tracking(-0.6)
+            .tracking(
+                dynamicTypeSize.isAccessibilitySize
+                ? 0
+                : -0.4
+            )
             .foregroundStyle(
                 BuiltTheme.textPrimary
             )
@@ -410,11 +416,9 @@ struct TodayView: View {
             )
 
             Text(
-                """
-                You are not waiting to become a non-smoker. You are practicing that identity now.
-                """
+                "You are not waiting to become a non-smoker. You are practicing that identity now."
             )
-            .font(.system(size: 14))
+            .font(.subheadline)
             .foregroundStyle(
                 BuiltTheme.textSecondary
             )
@@ -428,5 +432,8 @@ struct TodayView: View {
             alignment: .leading
         )
         .builtCard(padding: 22)
+        .accessibilityElement(
+            children: .combine
+        )
     }
 }

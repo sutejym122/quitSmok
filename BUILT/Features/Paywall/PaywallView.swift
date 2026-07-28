@@ -9,9 +9,13 @@ struct PaywallView: View {
     @Environment(\.dismiss)
     private var dismiss
 
+    @Environment(\.dynamicTypeSize)
+    private var dynamicTypeSize
+
     @State private var showsRestore = false
 
-    private var highlightedFeatures: [ProFeature] {
+    private var highlightedFeatures:
+        [ProFeature] {
         context.highlightedFeatures
     }
 
@@ -23,7 +27,9 @@ struct PaywallView: View {
                 ScrollView {
                     VStack(
                         alignment: .leading,
-                        spacing: 26
+                        spacing:
+                            BuiltTheme.Spacing
+                                .xLarge
                     ) {
                         hero
                         featureList
@@ -31,14 +37,21 @@ struct PaywallView: View {
                         purchaseControls
                         trustMessage
                     }
-                    .padding(.horizontal, 20)
+                    .padding(
+                        .horizontal,
+                        BuiltTheme.Spacing
+                            .screenHorizontal
+                    )
                     .padding(.top, 10)
-                    .padding(.bottom, 36)
+                    .padding(.bottom, 38)
                 }
+                .scrollIndicators(.hidden)
 
-                if storeManager.presentsPurchaseSuccess {
+                if storeManager
+                    .presentsPurchaseSuccess {
                     PurchaseSuccessView {
-                        storeManager.clearPresentationState()
+                        storeManager
+                            .clearPresentationState()
                         dismiss()
                     }
                     .zIndex(20)
@@ -48,26 +61,16 @@ struct PaywallView: View {
                 ToolbarItem(
                     placement: .topBarLeading
                 ) {
-                    Button {
+                    BuiltIconButton(
+                        systemName: "xmark",
+                        accessibilityLabel:
+                            "Close BUILT Pro",
+                        isEnabled:
+                            storeManager.status
+                            != .purchasing
+                    ) {
                         dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(
-                                .system(
-                                    size: 14,
-                                    weight: .bold
-                                )
-                            )
-                            .foregroundStyle(
-                                BuiltTheme.textPrimary
-                            )
-                            .frame(width: 40, height: 40)
-                            .background(
-                                .ultraThinMaterial,
-                                in: Circle()
-                            )
                     }
-                    .accessibilityLabel("Close BUILT Pro")
                 }
             }
             .toolbarBackground(
@@ -78,20 +81,28 @@ struct PaywallView: View {
         .interactiveDismissDisabled(
             storeManager.status == .purchasing
         )
-        .sheet(isPresented: $showsRestore) {
+        .sheet(
+            isPresented: $showsRestore
+        ) {
             RestorePurchasesView()
-                .environmentObject(storeManager)
+                .environmentObject(
+                    storeManager
+                )
         }
         .task {
             await storeManager.prepare()
         }
         .onDisappear {
-            if !storeManager.presentsPurchaseSuccess {
-                storeManager.clearPresentationState()
+            if !storeManager
+                .presentsPurchaseSuccess {
+                storeManager
+                    .clearPresentationState()
             }
         }
-        .alert(item: $storeManager.purchaseError) {
-            error in
+        .alert(
+            item:
+                $storeManager.purchaseError
+        ) { error in
             Alert(
                 title: Text(
                     error.errorDescription
@@ -111,90 +122,113 @@ struct PaywallView: View {
     private var hero: some View {
         VStack(
             alignment: .leading,
-            spacing: 22
+            spacing: BuiltTheme.Spacing.large
         ) {
-            HStack {
-                ProBadge()
-
-                Spacer()
-
-                Text("LIFETIME")
-                    .font(
-                        .system(
-                            size: 10,
-                            weight: .bold
-                        )
-                    )
-                    .tracking(1.5)
-                    .foregroundStyle(
-                        BuiltTheme.textSecondary
-                    )
+            if dynamicTypeSize
+                .isAccessibilitySize {
+                VStack(
+                    alignment: .leading,
+                    spacing:
+                        BuiltTheme.Spacing.medium
+                ) {
+                    ProBadge()
+                    lifetimeLabel
+                }
+            } else {
+                HStack {
+                    ProBadge()
+                    Spacer()
+                    lifetimeLabel
+                }
             }
 
-            ZStack(alignment: .bottomLeading) {
+            ZStack(
+                alignment: .bottomLeading
+            ) {
                 RoundedRectangle(
-                    cornerRadius: BuiltTheme.largeRadius,
+                    cornerRadius:
+                        BuiltTheme.largeRadius,
                     style: .continuous
                 )
                 .fill(
                     LinearGradient(
                         colors: [
-                            BuiltTheme.accent.opacity(0.30),
-                            BuiltTheme.accentSoft.opacity(0.14),
+                            BuiltTheme.accent
+                                .opacity(0.32),
+                            BuiltTheme.accentSoft
+                                .opacity(0.16),
                             BuiltTheme.elevated
                         ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
+                        startPoint:
+                            .topLeading,
+                        endPoint:
+                            .bottomTrailing
                     )
                 )
-                .frame(height: 260)
 
                 Circle()
                     .fill(
-                        BuiltTheme.accent.opacity(0.22)
+                        BuiltTheme.accent
+                            .opacity(0.20)
                     )
-                    .frame(width: 190, height: 190)
+                    .frame(
+                        width: 190,
+                        height: 190
+                    )
                     .blur(radius: 45)
-                    .offset(x: 170, y: -70)
+                    .offset(
+                        x: 170,
+                        y: -70
+                    )
+                    .accessibilityHidden(true)
 
                 VStack(
                     alignment: .leading,
-                    spacing: 13
+                    spacing:
+                        BuiltTheme.Spacing.medium
                 ) {
                     Text(context.eyebrow)
                         .font(
-                            .system(
-                                size: 11,
-                                weight: .bold
-                            )
+                            .caption
+                            .weight(.bold)
                         )
-                        .tracking(1.9)
+                        .tracking(
+                            dynamicTypeSize
+                                .isAccessibilitySize
+                            ? 0.7
+                            : 1.6
+                        )
                         .foregroundStyle(
                             BuiltTheme.accent
                         )
 
                     Text(context.title)
                         .font(
-                            .system(
-                                size: 40,
-                                weight: .bold
-                            )
+                            dynamicTypeSize
+                                .isAccessibilitySize
+                            ? .title.weight(.bold)
+                            : .largeTitle
+                                .weight(.bold)
                         )
-                        .tracking(-1.5)
+                        .tracking(
+                            dynamicTypeSize
+                                .isAccessibilitySize
+                            ? 0
+                            : -1.2
+                        )
                         .foregroundStyle(
                             BuiltTheme.textPrimary
                         )
-                        .minimumScaleFactor(0.76)
+                        .fixedSize(
+                            horizontal: false,
+                            vertical: true
+                        )
 
                     Text(context.message)
-                        .font(
-                            .system(
-                                size: 15,
-                                weight: .medium
-                            )
-                        )
+                        .font(.body)
                         .foregroundStyle(
-                            BuiltTheme.textPrimary.opacity(0.72)
+                            BuiltTheme.textPrimary
+                                .opacity(0.78)
                         )
                         .fixedSize(
                             horizontal: false,
@@ -203,15 +237,24 @@ struct PaywallView: View {
                 }
                 .padding(24)
             }
+            .frame(
+                minHeight:
+                    dynamicTypeSize
+                        .isAccessibilitySize
+                    ? 330
+                    : 270
+            )
             .clipShape(
                 RoundedRectangle(
-                    cornerRadius: BuiltTheme.largeRadius,
+                    cornerRadius:
+                        BuiltTheme.largeRadius,
                     style: .continuous
                 )
             )
             .overlay {
                 RoundedRectangle(
-                    cornerRadius: BuiltTheme.largeRadius,
+                    cornerRadius:
+                        BuiltTheme.largeRadius,
                     style: .continuous
                 )
                 .stroke(
@@ -219,30 +262,46 @@ struct PaywallView: View {
                     lineWidth: 1
                 )
             }
+            .accessibilityElement(
+                children: .combine
+            )
         }
+    }
+
+    private var lifetimeLabel: some View {
+        Text("LIFETIME")
+            .font(
+                .caption2
+                .weight(.bold)
+            )
+            .tracking(1.3)
+            .foregroundStyle(
+                BuiltTheme.textSecondary
+            )
     }
 
     private var featureList: some View {
         VStack(
             alignment: .leading,
-            spacing: 18
+            spacing: BuiltTheme.Spacing.large
         ) {
-            Text("THE COMPLETE SYSTEM")
-                .font(
-                    .system(
-                        size: 11,
-                        weight: .bold
-                    )
-                )
-                .tracking(1.7)
-                .foregroundStyle(
-                    BuiltTheme.accent
-                )
+            SectionHeader(
+                eyebrow:
+                    "The complete system",
+                title:
+                    "Everything BUILT protects"
+            )
 
-            VStack(spacing: 18) {
-                ForEach(highlightedFeatures) {
-                    feature in
-                    ProFeatureRow(feature: feature)
+            LazyVStack(
+                spacing:
+                    BuiltTheme.Spacing.large
+            ) {
+                ForEach(
+                    highlightedFeatures
+                ) { feature in
+                    ProFeatureRow(
+                        feature: feature
+                    )
                 }
             }
             .builtCard(padding: 20)
@@ -250,62 +309,99 @@ struct PaywallView: View {
     }
 
     private var lifetimeCard: some View {
-        HStack(spacing: 16) {
-            VStack(
-                alignment: .leading,
-                spacing: 5
-            ) {
-                Text("One purchase")
-                    .font(
-                        .system(
-                            size: 17,
-                            weight: .semibold
-                        )
-                    )
-                    .foregroundStyle(
-                        BuiltTheme.textPrimary
-                    )
-
-                Text("No subscription. No recurring bill.")
-                    .font(.system(size: 13))
-                    .foregroundStyle(
-                        BuiltTheme.textSecondary
-                    )
+        Group {
+            if dynamicTypeSize
+                .isAccessibilitySize {
+                VStack(
+                    alignment: .leading,
+                    spacing:
+                        BuiltTheme.Spacing.medium
+                ) {
+                    lifetimeCopy
+                    priceLabel
+                }
+            } else {
+                HStack(
+                    spacing:
+                        BuiltTheme.Spacing.medium
+                ) {
+                    lifetimeCopy
+                    Spacer()
+                    priceLabel
+                }
             }
-
-            Spacer()
-
-            Text(
-                storeManager.displayPrice
-                ?? "Loading…"
-            )
-            .font(
-                .system(
-                    size: 26,
-                    weight: .bold,
-                    design: .rounded
-                )
-            )
-            .foregroundStyle(
-                BuiltTheme.accent
-            )
         }
         .builtCard(padding: 19)
+        .accessibilityElement(
+            children: .combine
+        )
+    }
+
+    private var lifetimeCopy: some View {
+        VStack(
+            alignment: .leading,
+            spacing: BuiltTheme.Spacing.xSmall
+        ) {
+            Text("One purchase")
+                .font(
+                    .headline
+                    .weight(.semibold)
+                )
+                .foregroundStyle(
+                    BuiltTheme.textPrimary
+                )
+
+            Text(
+                "No subscription. No recurring bill."
+            )
+            .font(.subheadline)
+            .foregroundStyle(
+                BuiltTheme.textSecondary
+            )
+        }
+    }
+
+    private var priceLabel: some View {
+        Text(
+            storeManager.displayPrice
+            ?? "Loading…"
+        )
+        .font(
+            .title2
+            .weight(.bold)
+            .monospacedDigit()
+        )
+        .foregroundStyle(
+            BuiltTheme.accent
+        )
     }
 
     private var purchaseControls: some View {
-        VStack(spacing: 12) {
+        VStack(
+            spacing: BuiltTheme.Spacing.small
+        ) {
             if storeManager.hasPro {
                 Button {
                     dismiss()
                 } label: {
-                    HStack {
+                    HStack(spacing: 12) {
                         Image(
                             systemName:
                                 "checkmark.seal.fill"
                         )
-                        Text("BUILT Pro is active")
+                        .accessibilityHidden(true)
+
+                        Text(
+                            "BUILT Pro is active"
+                        )
+
                         Spacer()
+
+                        Image(
+                            systemName:
+                                "arrow.right"
+                        )
+                        .accessibilityHidden(true)
                     }
                 }
                 .buttonStyle(
@@ -314,23 +410,39 @@ struct PaywallView: View {
             } else {
                 Button {
                     Task {
-                        await storeManager.purchasePro()
+                        await storeManager
+                            .purchasePro()
                     }
                 } label: {
-                    HStack {
-                        if storeManager.status == .purchasing {
+                    HStack(spacing: 12) {
+                        if storeManager.status
+                            == .purchasing {
                             ProgressView()
                                 .tint(.black)
+                                .accessibilityHidden(
+                                    true
+                                )
                         } else {
                             Image(
                                 systemName:
                                     "diamond.fill"
                             )
+                            .accessibilityHidden(
+                                true
+                            )
                         }
 
-                        Text(purchaseButtonTitle)
+                        Text(
+                            purchaseButtonTitle
+                        )
+
                         Spacer()
-                        Image(systemName: "arrow.right")
+
+                        Image(
+                            systemName:
+                                "arrow.right"
+                        )
+                        .accessibilityHidden(true)
                     }
                 }
                 .buttonStyle(
@@ -340,59 +452,68 @@ struct PaywallView: View {
                     storeManager.proProduct == nil
                     || storeManager.isBusy
                 )
-                .opacity(
-                    storeManager.proProduct == nil
-                    || storeManager.isBusy
-                    ? 0.60
-                    : 1
-                )
             }
 
-            Button("Restore purchases") {
+            Button {
                 showsRestore = true
-            }
-            .font(
-                .system(
-                    size: 14,
-                    weight: .semibold
+            } label: {
+                Label(
+                    "Restore purchases",
+                    systemImage:
+                        "arrow.clockwise"
                 )
-            )
-            .foregroundStyle(
-                BuiltTheme.textSecondary
+            }
+            .buttonStyle(
+                BuiltTertiaryButtonStyle()
             )
             .disabled(storeManager.isBusy)
         }
     }
 
     private var purchaseButtonTitle: String {
-        if storeManager.status == .purchasing {
+        if storeManager.status
+            == .purchasing {
             return "Completing purchase…"
         }
 
-        if let price = storeManager.displayPrice {
-            return "Unlock lifetime access · \(price)"
+        if let price =
+            storeManager.displayPrice {
+            return
+                "Unlock lifetime access · \(price)"
         }
 
         return "Loading App Store price…"
     }
 
     private var trustMessage: some View {
-        VStack(spacing: 8) {
+        VStack(
+            spacing: BuiltTheme.Spacing.small
+        ) {
             Label(
                 "Emergency Rescue and core quitting tools remain free.",
                 systemImage: "heart.fill"
+            )
+            .font(
+                .footnote
+                .weight(.semibold)
+            )
+            .foregroundStyle(
+                BuiltTheme.textPrimary
             )
 
             Text(
                 "Purchases are processed by Apple. Restore is available on devices using the same Apple Account."
             )
+            .font(.footnote)
+            .foregroundStyle(
+                BuiltTheme.textSecondary
+            )
         }
-        .font(.system(size: 12))
-        .foregroundStyle(
-            BuiltTheme.textSecondary
-        )
         .multilineTextAlignment(.center)
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 8)
+        .accessibilityElement(
+            children: .combine
+        )
     }
 }

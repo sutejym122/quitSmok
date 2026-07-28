@@ -28,7 +28,9 @@ struct RescueView: View {
                 ScrollView {
                     VStack(
                         alignment: .leading,
-                        spacing: 26
+                        spacing:
+                            BuiltTheme.Spacing
+                                .xLarge
                     ) {
                         SectionHeader(
                             eyebrow:
@@ -37,20 +39,33 @@ struct RescueView: View {
                                 "Break the moment."
                         )
 
-                        rescueHero
+                        BuiltHeroPanel(
+                            eyebrow:
+                                "A wave, not a command",
+                            title:
+                                "You do not have to obey this urge.",
+                            message:
+                                profile.identityStatement,
+                            systemName:
+                                "waveform.path.ecg",
+                            trailingValue:
+                                "\(defeatedCount)",
+                            trailingLabel:
+                                "Wins logged"
+                        )
+
                         startButton
                         historySection
                     }
                     .padding(
                         .horizontal,
-                        20
+                        BuiltTheme.Spacing
+                            .screenHorizontal
                     )
                     .padding(.top, 18)
-                    .padding(
-                        .bottom,
-                        36
-                    )
+                    .padding(.bottom, 38)
                 }
+                .scrollIndicators(.hidden)
             }
             .toolbar(
                 .hidden,
@@ -67,118 +82,16 @@ struct RescueView: View {
         }
     }
 
-    private var rescueHero: some View {
-        VStack(
-            alignment: .leading,
-            spacing: 22
-        ) {
-            HStack {
-                Image(
-                    systemName:
-                        "waveform.path.ecg"
-                )
-                .font(
-                    .system(
-                        size: 26,
-                        weight: .semibold
-                    )
-                )
-                .foregroundStyle(
-                    BuiltTheme.accent
-                )
-                .frame(
-                    width: 56,
-                    height: 56
-                )
-                .background(
-                    BuiltTheme.accent
-                        .opacity(0.12),
-                    in: Circle()
-                )
-
-                Spacer()
-
-                VStack(
-                    alignment: .trailing,
-                    spacing: 3
-                ) {
-                    Text(
-                        "\(defeatedCount)"
-                    )
-                    .font(
-                        .system(
-                            size: 32,
-                            weight: .bold,
-                            design: .rounded
-                        )
-                    )
-                    .foregroundStyle(
-                        BuiltTheme.textPrimary
-                    )
-
-                    Text("WINS LOGGED")
-                        .font(
-                            .system(
-                                size: 10,
-                                weight: .bold
-                            )
-                        )
-                        .tracking(1.2)
-                        .foregroundStyle(
-                            BuiltTheme.textSecondary
-                        )
-                }
-            }
-
-            Text(
-                """
-                A craving is a wave,
-                not a command.
-                """
-            )
-            .font(
-                .system(
-                    size: 36,
-                    weight: .bold
-                )
-            )
-            .tracking(-1.2)
-            .foregroundStyle(
-                BuiltTheme.textPrimary
-            )
-
-            Text(
-                profile.identityStatement
-            )
-            .font(
-                .system(
-                    size: 17,
-                    weight: .medium
-                )
-            )
-            .foregroundStyle(
-                BuiltTheme.textSecondary
-            )
-            .fixedSize(
-                horizontal: false,
-                vertical: true
-            )
-        }
-        .frame(
-            maxWidth: .infinity,
-            alignment: .leading
-        )
-        .builtCard(padding: 24)
-    }
-
     private var startButton: some View {
         Button {
             showingSession = true
         } label: {
-            HStack {
+            HStack(spacing: 12) {
                 Image(
-                    systemName: "play.fill"
+                    systemName:
+                        "play.fill"
                 )
+                .accessibilityHidden(true)
 
                 Text(
                     "Start a 60-second rescue"
@@ -190,17 +103,21 @@ struct RescueView: View {
                     systemName:
                         "arrow.right"
                 )
+                .accessibilityHidden(true)
             }
         }
         .buttonStyle(
             BuiltPrimaryButtonStyle()
+        )
+        .accessibilityHint(
+            "Starts breathing guidance and your personalized replacement actions"
         )
     }
 
     private var historySection: some View {
         VStack(
             alignment: .leading,
-            spacing: 16
+            spacing: BuiltTheme.Spacing.medium
         ) {
             SectionHeader(
                 eyebrow: "Evidence",
@@ -212,53 +129,21 @@ struct RescueView: View {
             )
 
             if cravings.isEmpty {
-                VStack(spacing: 14) {
-                    Image(
-                        systemName:
-                            "checkmark.shield"
-                    )
-                    .font(
-                        .system(
-                            size: 34,
-                            weight: .light
-                        )
-                    )
-                    .foregroundStyle(
-                        BuiltTheme.accent
-                    )
-
-                    Text(
-                        "No cravings logged yet"
-                    )
-                    .font(
-                        .system(
-                            size: 17,
-                            weight: .semibold
-                        )
-                    )
-                    .foregroundStyle(
-                        BuiltTheme.textPrimary
-                    )
-
-                    Text(
-                        """
-                        When one arrives, use Rescue. Logging the trigger helps reveal your pattern.
-                        """
-                    )
-                    .font(.system(size: 14))
-                    .foregroundStyle(
-                        BuiltTheme.textSecondary
-                    )
-                    .multilineTextAlignment(
-                        .center
-                    )
-                }
-                .frame(
-                    maxWidth: .infinity
+                BuiltEmptyState(
+                    systemName:
+                        "checkmark.shield",
+                    title:
+                        "No cravings logged yet",
+                    message:
+                        "When one arrives, use Rescue. Logging the trigger turns an urge into a pattern you can understand.",
+                    actionTitle:
+                        "Start Rescue",
+                    action: {
+                        showingSession = true
+                    }
                 )
-                .builtCard(padding: 26)
             } else {
-                VStack(spacing: 10) {
+                LazyVStack(spacing: 10) {
                     ForEach(
                         cravings.prefix(8)
                     ) { craving in
@@ -275,88 +160,134 @@ struct RescueView: View {
 private struct CravingRow: View {
     let craving: CravingEntry
 
+    @Environment(\.dynamicTypeSize)
+    private var dynamicTypeSize
+
+    private var isDefeated: Bool {
+        craving.outcome == .defeated
+    }
+
     var body: some View {
-        HStack(spacing: 14) {
-            Image(
-                systemName:
-                    craving.outcome
-                        == .defeated
-                    ? "checkmark"
-                    : "arrow.counterclockwise"
-            )
-            .font(
-                .system(
-                    size: 15,
-                    weight: .bold
-                )
-            )
-            .foregroundStyle(
-                craving.outcome
-                    == .defeated
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(
+                    alignment: .leading,
+                    spacing: BuiltTheme.Spacing.medium
+                ) {
+                    rowHeader
+                    rowDetails
+                }
+            } else {
+                HStack(
+                    spacing: BuiltTheme.Spacing.medium
+                ) {
+                    outcomeIcon
+                    rowDetails
+                    Spacer()
+                    dateLabel
+                }
+            }
+        }
+        .frame(
+            maxWidth: .infinity,
+            alignment: .leading
+        )
+        .builtCard(padding: 15)
+        .accessibilityElement(
+            children: .ignore
+        )
+        .accessibilityLabel(
+            "\(isDefeated ? "Craving defeated" : "Slip recorded"). Trigger: \(craving.trigger)."
+        )
+        .accessibilityValue(
+            "Intensity \(craving.intensity) out of 10. Action: \(craving.replacementAction). \(craving.createdAt.formatted(date: .abbreviated, time: .omitted))."
+        )
+    }
+
+    private var rowHeader: some View {
+        HStack(
+            spacing: BuiltTheme.Spacing.medium
+        ) {
+            outcomeIcon
+            Spacer()
+            dateLabel
+        }
+    }
+
+    private var outcomeIcon: some View {
+        Image(
+            systemName:
+                isDefeated
+                ? "checkmark"
+                : "arrow.counterclockwise"
+        )
+        .font(
+            .body
+            .weight(.bold)
+        )
+        .foregroundStyle(
+            isDefeated
+            ? BuiltTheme.accent
+            : BuiltTheme.danger
+        )
+        .frame(
+            width: 40,
+            height: 40
+        )
+        .background(
+            (
+                isDefeated
                 ? BuiltTheme.accent
                 : BuiltTheme.danger
             )
-            .frame(
-                width: 38,
-                height: 38
-            )
-            .background(
-                (
-                    craving.outcome
-                        == .defeated
-                    ? BuiltTheme.accent
-                    : BuiltTheme.danger
-                )
-                .opacity(0.11),
-                in: Circle()
-            )
+            .opacity(0.11),
+            in: Circle()
+        )
+        .accessibilityHidden(true)
+    }
 
-            VStack(
-                alignment: .leading,
-                spacing: 4
-            ) {
-                Text(craving.trigger)
-                    .font(
-                        .system(
-                            size: 16,
-                            weight: .semibold
-                        )
-                    )
-                    .foregroundStyle(
-                        BuiltTheme.textPrimary
-                    )
-
-                Text(
-                    """
-                    Intensity \(craving.intensity)/10 · \(craving.replacementAction)
-                    """
+    private var rowDetails: some View {
+        VStack(
+            alignment: .leading,
+            spacing: BuiltTheme.Spacing.xSmall
+        ) {
+            Text(craving.trigger)
+                .font(
+                    .headline
+                    .weight(.semibold)
                 )
-                .font(.system(size: 12))
                 .foregroundStyle(
-                    BuiltTheme.textSecondary
+                    BuiltTheme.textPrimary
                 )
-                .lineLimit(1)
-            }
-
-            Spacer()
 
             Text(
-                craving.createdAt,
-                format:
-                    .dateTime
-                    .month(.abbreviated)
-                    .day()
+                "Intensity \(craving.intensity)/10 · \(craving.replacementAction)"
             )
-            .font(
-                .system(
-                    size: 12,
-                    weight: .medium
-                )
-            )
+            .font(.caption)
             .foregroundStyle(
                 BuiltTheme.textSecondary
             )
+            .fixedSize(
+                horizontal: false,
+                vertical: true
+            )
         }
-        .builtCard(padding: 14)
+    }
+
+    private var dateLabel: some View {
+        Text(
+            craving.createdAt,
+            format:
+                .dateTime
+                .month(.abbreviated)
+                .day()
+        )
+        .font(
+            .caption
+            .weight(.medium)
+        )
+        .foregroundStyle(
+            BuiltTheme.textSecondary
+        )
     }
 }
