@@ -1,8 +1,10 @@
 import Foundation
 import StoreKit
 import Combine
+import OSLog
 
-enum PurchaseStatus: Equatable {
+enum PurchaseStatus:
+    Equatable {
     case idle
     case purchasing
     case pending
@@ -12,40 +14,79 @@ enum PurchaseStatus: Equatable {
 }
 
 @MainActor
-final class StoreManager: ObservableObject {
+final class StoreManager:
+    ObservableObject {
+    nonisolated
     static let proProductID =
         "com.sutej.built.pro.lifetime"
 
-    @Published private(set) var proProduct: Product?
-    @Published private(set) var hasPro: Bool
-    @Published private(set) var status: PurchaseStatus = .idle
-    @Published private(set) var isLoadingProducts = false
-    @Published var purchaseError: PurchaseError?
-    @Published var presentsPurchaseSuccess = false
+    @Published
+    private(set)
+    var proProduct: Product?
 
-    private static let cachedEntitlementKey =
-        "built.pro.cached-entitlement.v1"
+    @Published
+    private(set)
+    var hasPro: Bool
 
-    private let entitlementManager = EntitlementManager(
-        productID: StoreManager.proProductID
-    )
+    @Published
+    private(set)
+    var status:
+        PurchaseStatus = .idle
 
-    private var transactionUpdatesTask: Task<Void, Never>?
+    @Published
+    private(set)
+    var isLoadingProducts = false
 
-    init() {
-        hasPro = UserDefaults.standard.bool(
-            forKey: Self.cachedEntitlementKey
+    @Published
+    var purchaseError:
+        PurchaseError?
+
+    @Published
+    var presentsPurchaseSuccess =
+        false
+
+    private let entitlementManager =
+        EntitlementManager(
+            productID:
+                StoreManager.proProductID
         )
 
-        observeTransactionUpdates()
+    private let entitlementCache:
+        EntitlementCache
 
-        Task {
-            await prepare()
+    private var transactionUpdatesTask:
+        Task<Void, Never>?
+
+    init(
+        defaults:
+            UserDefaults = .standard,
+        automaticallyPrepares:
+            Bool = true,
+        observesTransactionUpdates:
+            Bool = true
+    ) {
+        let cache =
+            EntitlementCache(
+                defaults: defaults
+            )
+
+        entitlementCache = cache
+        hasPro = cache.load()
+
+        if observesTransactionUpdates {
+            observeTransactionUpdates()
+        }
+
+        if automaticallyPrepares {
+            Task {
+                await prepare()
+            }
         }
     }
 
     deinit {
-        transactionUpdatesTask?.cancel()
+        transactionUpdatesTask?
+            .cancel()
     }
 
     var displayPrice: String? {
@@ -54,37 +95,52 @@ final class StoreManager: ObservableObject {
 
     var isBusy: Bool {
         isLoadingProducts
-            || status == .purchasing
-            || status == .restoring
+        || status == .purchasing
+        || status == .restoring
     }
 
     func prepare() async {
         await refreshEntitlements()
 
-        guard proProduct == nil else {
+        guard proProduct == nil
+        else {
             return
         }
 
         isLoadingProducts = true
+
         defer {
             isLoadingProducts = false
         }
 
         do {
-            let products = try await Product.products(
-                for: [Self.proProductID]
-            )
+            let products =
+                try await Product
+                    .products(
+                        for: [
+                            Self.proProductID
+                        ]
+                    )
 
-            proProduct = products.first {
-                $0.id == Self.proProductID
-            }
+            proProduct =
+                products.first {
+                    $0.id
+                    == Self.proProductID
+                }
 
             if proProduct == nil {
-                purchaseError = .productUnavailable
+                purchaseError =
+                    .productUnavailable
             }
         } catch {
-            purchaseError = .productLoadingFailed(
-                error.localizedDescription
+            purchaseError =
+                .productLoadingFailed(
+                    error
+                        .localizedDescription
+                )
+
+            BuiltLog.storeKit.error(
+                "Failed to load BUILT Pro: \(error.localizedDescription, privacy: .private)"
             )
         }
     }
@@ -94,12 +150,16 @@ final class StoreManager: ObservableObject {
 
         if hasPro {
             status = .purchased
-            presentsPurchaseSuccess = true
+            presentsPurchaseSuccess =
+                true
             return
         }
 
-        guard let proProduct else {
-            purchaseError = .productUnavailable
+        guard let proProduct
+        else {
+            purchaseError =
+                .productUnavailable
+
             await prepare()
             return
         }
@@ -107,54 +167,79 @@ final class StoreManager: ObservableObject {
         status = .purchasing
 
         do {
-            let result = try await proProduct.purchase()
+            let result =
+                try await proProduct
+                    .purchase()
 
             switch result {
-            case .success(let verificationResult):
+            case .success(
+                let verificationResult
+            ):
                 let transaction =
-                    try entitlementManager.verifiedTransaction(
-                        from: verificationResult
-                    )
+                    try entitlementManager
+                        .verifiedTransaction(
+                            from:
+                                verificationResult
+                        )
 
-                guard transaction.productID
-                        == Self.proProductID else {
-                    throw PurchaseError.verificationFailed
+                guard
+                    transaction.productID
+                    == Self.proProductID
+                else {
+                    throw PurchaseError
+                        .verificationFailed
                 }
 
                 await transaction.finish()
                 await refreshEntitlements()
 
                 guard hasPro else {
-                    throw PurchaseError.verificationFailed
+                    throw PurchaseError
+                        .verificationFailed
                 }
 
                 status = .purchased
-                presentsPurchaseSuccess = true
+                presentsPurchaseSuccess =
+                    true
                 Haptics.success()
 
             case .pending:
                 status = .pending
-                purchaseError = .purchasePending
+                purchaseError =
+                    .purchasePending
 
             case .userCancelled:
                 status = .idle
 
             @unknown default:
                 status = .idle
-                purchaseError = .purchaseFailed(
-                    "The App Store returned an unknown purchase result."
-                )
+                purchaseError =
+                    .purchaseFailed(
+                        "The App Store returned an unknown purchase result."
+                    )
             }
-        } catch let error as PurchaseError {
+        } catch
+            let error
+                as PurchaseError {
             status = .idle
             purchaseError = error
             Haptics.warning()
+
+            BuiltLog.storeKit.error(
+                "BUILT Pro purchase failed with a controlled purchase error."
+            )
         } catch {
             status = .idle
-            purchaseError = .purchaseFailed(
-                error.localizedDescription
-            )
+            purchaseError =
+                .purchaseFailed(
+                    error
+                        .localizedDescription
+                )
             Haptics.warning()
+
+            BuiltLog.storeKit.error(
+                "BUILT Pro purchase failed: \(error.localizedDescription, privacy: .private)"
+            )
         }
     }
 
@@ -168,37 +253,50 @@ final class StoreManager: ObservableObject {
 
             guard hasPro else {
                 status = .idle
-                purchaseError = .nothingToRestore
+                purchaseError =
+                    .nothingToRestore
                 return
             }
 
             status = .restored
-            presentsPurchaseSuccess = true
+            presentsPurchaseSuccess =
+                true
             Haptics.success()
         } catch {
             status = .idle
-            purchaseError = .restoreFailed(
-                error.localizedDescription
-            )
+            purchaseError =
+                .restoreFailed(
+                    error
+                        .localizedDescription
+                )
             Haptics.warning()
+
+            BuiltLog.storeKit.error(
+                "Restore purchases failed: \(error.localizedDescription, privacy: .private)"
+            )
         }
     }
 
-    func refreshEntitlements() async {
+    func refreshEntitlements()
+        async {
         let entitled =
-            await entitlementManager.hasCurrentEntitlement()
+            await entitlementManager
+                .hasCurrentEntitlement()
 
         hasPro = entitled
+        entitlementCache.save(
+            entitled
+        )
 
-        UserDefaults.standard.set(
-            entitled,
-            forKey: Self.cachedEntitlementKey
+        BuiltLog.storeKit.info(
+            "BUILT Pro entitlement refreshed. Active: \(entitled, privacy: .public)"
         )
     }
 
     func clearPresentationState() {
         purchaseError = nil
-        presentsPurchaseSuccess = false
+        presentsPurchaseSuccess =
+            false
 
         if status != .pending {
             status = .idle
@@ -206,28 +304,38 @@ final class StoreManager: ObservableObject {
     }
 
     private func observeTransactionUpdates() {
-        transactionUpdatesTask = Task { [weak self] in
-            for await result in Transaction.updates {
-                guard let self else {
-                    return
-                }
+        transactionUpdatesTask =
+            Task { [weak self] in
+                for await result in
+                    Transaction.updates {
+                    guard let self
+                    else {
+                        return
+                    }
 
-                await self.processTransactionUpdate(result)
+                    await self
+                        .processTransactionUpdate(
+                            result
+                        )
+                }
             }
-        }
     }
 
     private func processTransactionUpdate(
-        _ result: VerificationResult<Transaction>
+        _ result:
+            VerificationResult<Transaction>
     ) async {
         do {
             let transaction =
-                try entitlementManager.verifiedTransaction(
-                    from: result
-                )
+                try entitlementManager
+                    .verifiedTransaction(
+                        from: result
+                    )
 
-            guard transaction.productID
-                    == Self.proProductID else {
+            guard
+                transaction.productID
+                == Self.proProductID
+            else {
                 return
             }
 
@@ -238,7 +346,12 @@ final class StoreManager: ObservableObject {
                 status = .purchased
             }
         } catch {
-            purchaseError = .verificationFailed
+            purchaseError =
+                .verificationFailed
+
+            BuiltLog.storeKit.error(
+                "A StoreKit transaction update failed verification."
+            )
         }
     }
 }

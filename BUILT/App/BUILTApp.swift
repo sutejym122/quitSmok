@@ -3,23 +3,34 @@ import SwiftData
 
 @main
 struct BUILTApp: App {
-    @UIApplicationDelegateAdaptor(AppDelegate.self)
+    @UIApplicationDelegateAdaptor(
+        AppDelegate.self
+    )
     private var appDelegate
 
     @StateObject
-    private var storeManager = StoreManager()
+    private var storeManager =
+        StoreManager()
 
-    private let modelContainer: ModelContainer
+    private let modelContainer:
+        ModelContainer
 
     init() {
         do {
-            modelContainer = try ModelContainer(
-                for: QuitProfile.self,
-                CravingEntry.self,
-                MotivationPhoto.self,
-                RewardGoal.self
-            )
+            modelContainer =
+                try AppModelContainerFactory
+                    .make()
+
+            AppDiagnostics
+                .recordModelContainerReady(
+                    inMemory: false
+                )
         } catch {
+            AppDiagnostics
+                .recordModelContainerFailure(
+                    error
+                )
+
             fatalError(
                 "Unable to create SwiftData container: \(error)"
             )
@@ -29,8 +40,12 @@ struct BUILTApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
-                .preferredColorScheme(.dark)
-                .environmentObject(storeManager)
+                .preferredColorScheme(
+                    .dark
+                )
+                .environmentObject(
+                    storeManager
+                )
         }
         .modelContainer(modelContainer)
     }
