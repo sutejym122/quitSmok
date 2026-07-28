@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UserNotifications
 
 struct SettingsView: View {
     @Bindable var profile: QuitProfile
@@ -9,6 +10,9 @@ struct SettingsView: View {
 
     @Environment(\.modelContext)
     private var modelContext
+
+    @Environment(\.scenePhase)
+    private var scenePhase
 
     @EnvironmentObject
     private var storeManager: StoreManager
@@ -26,6 +30,30 @@ struct SettingsView: View {
     @State private var showingDeleteAlert = false
     @State private var showingPaywall = false
     @State private var showingRestorePurchases = false
+    @State private var saveErrorMessage: String?
+    @State private var notificationStatus: UNAuthorizationStatus = .notDetermined
+    @State private var isSaving = false
+
+    @Environment(\.dynamicTypeSize)
+    private var dynamicTypeSize
+
+    private var appVersion: String {
+        let version = Bundle.main
+            .object(
+                forInfoDictionaryKey:
+                    "CFBundleShortVersionString"
+            ) as? String
+            ?? "1.0"
+
+        let build = Bundle.main
+            .object(
+                forInfoDictionaryKey:
+                    "CFBundleVersion"
+            ) as? String
+            ?? "1"
+
+        return "\(version) (\(build))"
+    }
 
     var body: some View {
         NavigationStack {
@@ -35,20 +63,30 @@ struct SettingsView: View {
                 ScrollView {
                     VStack(
                         alignment: .leading,
-                        spacing: 24
+                        spacing:
+                            BuiltTheme.Spacing.xLarge
                     ) {
+                        settingsHero
                         identitySection
-                        quitDateSection
-                        smokingPatternSection
+                        quitJourneySection
+                        calculationSection
                         proSection
                         systemPresenceSection
-                        dataSection
+                        privacySection
+                        aboutSection
                     }
-                    .padding(.horizontal, 20)
+                    .padding(
+                        .horizontal,
+                        BuiltTheme.Spacing
+                            .screenHorizontal
+                    )
                     .padding(.top, 16)
-                    .padding(.bottom, 40)
+                    .padding(.bottom, 42)
                 }
-                .scrollDismissesKeyboard(.interactively)
+                .scrollIndicators(.hidden)
+                .scrollDismissesKeyboard(
+                    .interactively
+                )
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
@@ -64,13 +102,27 @@ struct SettingsView: View {
                 ToolbarItem(
                     placement: .topBarTrailing
                 ) {
-                    Button("Done") {
-                        try? modelContext.save()
-                        dismiss()
+                    Button {
+                        saveAndDismiss()
+                    } label: {
+                        if isSaving {
+                            ProgressView()
+                                .tint(
+                                    BuiltTheme.accent
+                                )
+                        } else {
+                            Text("Done")
+                                .fontWeight(
+                                    .semibold
+                                )
+                        }
                     }
-                    .fontWeight(.semibold)
                     .foregroundStyle(
                         BuiltTheme.accent
+                    )
+                    .disabled(isSaving)
+                    .accessibilityHint(
+                        "Saves your changes and closes Settings"
                     )
                 }
             }
@@ -80,10 +132,24 @@ struct SettingsView: View {
                 .environmentObject(storeManager)
         }
         .sheet(
-            isPresented: $showingRestorePurchases
+            isPresented:
+                $showingRestorePurchases
         ) {
             RestorePurchasesView()
                 .environmentObject(storeManager)
+        }
+        .task {
+            await storeManager.prepare()
+            await refreshNotificationStatus()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else {
+                return
+            }
+
+            Task {
+                await refreshNotificationStatus()
+            }
         }
         .onChange(
             of: profile.currencyCode
@@ -100,18 +166,14 @@ struct SettingsView: View {
             }
         }
         .alert(
-            "Reset your smoke-free timer?",
+            "Restart your smoke-free timer?",
             isPresented: $showingResetAlert
         ) {
             Button(
-                "Reset to now",
+                "Restart from now",
                 role: .destructive
             ) {
-                profile.quitDate = .now
-                profile.slipCount += 1
-                RecoveryCelebrationStore.reset()
-                try? modelContext.save()
-                Haptics.warning()
+                restartTimer()
             }
 
             Button(
@@ -120,7 +182,7 @@ struct SettingsView: View {
             ) {}
         } message: {
             Text(
-                "Your craving history, photos, and rewards stay saved. Only the current timer restarts."
+                "Your craving history, photos, rewards, and preferences stay saved. BUILT records one restart and begins the current timer again."
             )
         }
         .alert(
@@ -140,58 +202,103 @@ struct SettingsView: View {
             ) {}
         } message: {
             Text(
-                "This permanently removes your profile, craving history, imported photo copies, reward goals, widgets, and scheduled reminders. Your App Store purchase is not deleted."
+                "This permanently removes your profile, craving history, imported photo copies, reward goals, widgets, and scheduled reminders. Your App Store purchase remains attached to your Apple Account."
+            )
+        }
+        .alert(
+            "Changes could not be saved",
+            isPresented: Binding(
+                get: {
+                    saveErrorMessage != nil
+                },
+                set: { presented in
+                    if !presented {
+                        saveErrorMessage = nil
+                    }
+                }
+            )
+        ) {
+            Button(
+                "OK",
+                role: .cancel
+            ) {
+                saveErrorMessage = nil
+            }
+        } message: {
+            Text(
+                saveErrorMessage
+                ?? "Please try again."
             )
         }
     }
 
-    private var identitySection: some View {
-        VStack(
-            alignment: .leading,
-            spacing: 16
-        ) {
-            settingTitle(
-                "Identity statement",
-                icon: "quote.opening"
-            )
+    private var settingsHero: some View {
+        BuiltHeroPanel(
+            eyebrow: "BUILT control center",
+            title: "Your quit. Your rules.",
+            message:
+                "Update the numbers, identity, permissions, and system presence behind your smoke-free plan.",
+            systemName:
+                "slider.horizontal.3",
+            trailingValue:
+                storeManager.hasPro
+                ? "PRO"
+                : "FREE",
+            trailingLabel:
+                "Current access"
+        )
+    }
 
+    private var identitySection: some View {
+        BuiltSettingsSection(
+            title: "Identity statement",
+            symbolName: "quote.opening"
+        ) {
             TextField(
                 "Reason for quitting",
                 text: $profile.identityStatement,
                 axis: .vertical
             )
-            .lineLimit(3...6)
-            .font(
-                .system(
-                    size: 21,
-                    weight: .semibold
-                )
-            )
+            .lineLimit(3...7)
+            .font(.title3.weight(.semibold))
             .foregroundStyle(
                 BuiltTheme.textPrimary
             )
             .padding(16)
             .background(
-                Color.white.opacity(0.06),
+                BuiltTheme.elevatedStrong,
                 in: RoundedRectangle(
-                    cornerRadius: 18,
+                    cornerRadius:
+                        BuiltTheme.smallRadius,
                     style: .continuous
                 )
             )
-        }
-        .builtCard()
-    }
-
-    private var quitDateSection: some View {
-        VStack(
-            alignment: .leading,
-            spacing: 16
-        ) {
-            settingTitle(
-                "Smoke-free start",
-                icon: "calendar"
+            .accessibilityLabel(
+                "Identity statement"
+            )
+            .accessibilityHint(
+                "This appears on Today and during cravings"
             )
 
+            Text(
+                "Write the sentence you need to hear when motivation drops."
+            )
+            .font(.footnote)
+            .foregroundStyle(
+                BuiltTheme.textSecondary
+            )
+            .fixedSize(
+                horizontal: false,
+                vertical: true
+            )
+        }
+    }
+
+    private var quitJourneySection: some View {
+        BuiltSettingsSection(
+            title: "Smoke-free journey",
+            symbolName: "calendar"
+        ) {
             DatePicker(
                 "Last cigarette",
                 selection: $profile.quitDate,
@@ -204,173 +311,135 @@ struct SettingsView: View {
             .datePickerStyle(.compact)
             .tint(BuiltTheme.accent)
 
+            BuiltSettingsDivider()
+
+            BuiltSettingsInfoRow(
+                symbolName:
+                    "arrow.counterclockwise",
+                title:
+                    "Recorded restarts",
+                subtitle:
+                    "A restart does not erase the evidence you already built.",
+                value:
+                    "\(profile.slipCount)",
+                tint:
+                    profile.slipCount == 0
+                    ? BuiltTheme.accent
+                    : BuiltTheme.warning
+            )
+
             Button {
                 showingResetAlert = true
             } label: {
-                Text("Reset counter to now")
-                    .font(
-                        .system(
-                            size: 14,
-                            weight: .semibold
-                        )
-                    )
-                    .foregroundStyle(
-                        BuiltTheme.danger
-                    )
+                Label(
+                    "Restart counter from now",
+                    systemImage:
+                        "arrow.counterclockwise"
+                )
             }
+            .buttonStyle(
+                BuiltDestructiveButtonStyle()
+            )
+            .accessibilityHint(
+                "Keeps your history and starts the current timer again"
+            )
         }
-        .builtCard()
     }
 
-    private var smokingPatternSection: some View {
-        VStack(
-            alignment: .leading,
-            spacing: 18
-        ) {
-            settingTitle(
+    private var calculationSection: some View {
+        BuiltSettingsSection(
+            title:
                 "Calculation settings",
-                icon: "function"
+            symbolName: "function"
+        ) {
+            editableNumberRow(
+                title:
+                    "Cigarettes per day",
+                subtitle:
+                    "Your old daily average",
+                value:
+                    $profile.cigarettesPerDay,
+                precision: 0...1
             )
+
+            BuiltSettingsDivider()
 
             editableNumberRow(
-                title: "Cigarettes per day",
-                value: $profile.cigarettesPerDay
+                title:
+                    "Cigarettes per pack",
+                subtitle:
+                    "Used for money calculations",
+                value:
+                    $profile.cigarettesPerPack,
+                precision: 0...1
             )
 
-            Divider()
-                .overlay(BuiltTheme.hairline)
+            BuiltSettingsDivider()
 
-            editableNumberRow(
-                title: "Cigarettes per pack",
-                value: $profile.cigarettesPerPack
-            )
+            packPriceRow
 
-            Divider()
-                .overlay(BuiltTheme.hairline)
-
-            HStack {
-                Text("Pack price")
-                    .font(
-                        .system(
-                            size: 15,
-                            weight: .medium
-                        )
-                    )
-                    .foregroundStyle(
-                        BuiltTheme.textPrimary
-                    )
-
-                Spacer()
-
-                TextField(
-                    "15",
-                    value: $profile.packPrice,
-                    format: .number.precision(
-                        .fractionLength(0...2)
-                    )
-                )
-                .keyboardType(.decimalPad)
-                .multilineTextAlignment(.trailing)
-                .font(
-                    .system(
-                        size: 17,
-                        weight: .semibold,
-                        design: .rounded
-                    )
-                )
-                .frame(width: 88)
-
-                TextField(
-                    "USD",
-                    text: $profile.currencyCode
-                )
-                .textInputAutocapitalization(.characters)
-                .autocorrectionDisabled()
-                .multilineTextAlignment(.center)
-                .font(
-                    .system(
-                        size: 13,
-                        weight: .bold,
-                        design: .monospaced
-                    )
-                )
-                .frame(width: 56)
-                .padding(.vertical, 8)
-                .background(
-                    Color.white.opacity(0.07),
-                    in: Capsule()
+            if !calculationValuesAreValid {
+                BuiltStatusCard(
+                    kind: .warning,
+                    title:
+                        "Check these values",
+                    message:
+                        "Daily cigarettes, pack size, and pack price must be greater than zero. Currency must use a three-letter code such as USD."
                 )
             }
         }
-        .builtCard()
     }
 
     @ViewBuilder
     private var proSection: some View {
-        VStack(spacing: 12) {
+        VStack(
+            alignment: .leading,
+            spacing: 12
+        ) {
             if storeManager.hasPro {
-                VStack(
-                    alignment: .leading,
-                    spacing: 18
+                BuiltSettingsSection(
+                    title: "BUILT Pro",
+                    symbolName: "diamond.fill"
                 ) {
-                    HStack {
-                        VStack(
-                            alignment: .leading,
-                            spacing: 5
-                        ) {
-                            Text("BUILT Pro")
-                                .font(
-                                    .system(
-                                        size: 22,
-                                        weight: .bold
-                                    )
-                                )
-                                .foregroundStyle(
-                                    BuiltTheme.textPrimary
-                                )
-
-                            Text(
-                                "Lifetime access is active on this Apple Account."
-                            )
-                            .font(.system(size: 13))
-                            .foregroundStyle(
-                                BuiltTheme.textSecondary
-                            )
+                    Group {
+                        if dynamicTypeSize
+                            .isAccessibilitySize {
+                            VStack(
+                                alignment: .leading,
+                                spacing:
+                                    BuiltTheme.Spacing.medium
+                            ) {
+                                ProBadge()
+                                proActiveCopy
+                            }
+                        } else {
+                            HStack(
+                                alignment: .top
+                            ) {
+                                proActiveCopy
+                                Spacer()
+                                ProBadge()
+                            }
                         }
-
-                        Spacer()
-                        ProBadge()
                     }
 
-                    HStack(spacing: 10) {
-                        Image(
-                            systemName:
-                                "checkmark.seal.fill"
-                        )
-                        .foregroundStyle(
-                            BuiltTheme.accent
-                        )
+                    BuiltSettingsDivider()
 
-                        Text(
-                            "Thank you for supporting an independent, privacy-first quitting app."
-                        )
-                        .font(
-                            .system(
-                                size: 13,
-                                weight: .medium
-                            )
-                        )
-                        .foregroundStyle(
-                            BuiltTheme.textSecondary
-                        )
-                    }
+                    BuiltSettingsInfoRow(
+                        symbolName:
+                            "checkmark.seal.fill",
+                        title:
+                            "Lifetime access active",
+                        subtitle:
+                            "Your entitlement is available on devices using the same Apple Account.",
+                        value: "Unlocked"
+                    )
                 }
-                .builtCard(padding: 20)
             } else {
                 UpgradeCard(
                     title: "BUILT Pro",
                     message:
-                        "One lifetime unlock for the complete fitness-driven quitting system.",
+                        "One lifetime purchase unlocks the complete fitness-driven quitting system.",
                     action: {
                         showingPaywall = true
                     }
@@ -380,11 +449,17 @@ struct SettingsView: View {
             Button {
                 showingRestorePurchases = true
             } label: {
-                settingsNavigationRow(
-                    icon: "arrow.clockwise",
-                    title: "Restore purchases",
+                BuiltSettingsNavigationRow(
+                    symbolName:
+                        "arrow.clockwise",
+                    title:
+                        "Restore purchases",
                     subtitle:
-                        "Recheck lifetime access using the same Apple Account"
+                        "Recheck lifetime access using the same Apple Account",
+                    value:
+                        storeManager.isBusy
+                        ? "Checking…"
+                        : nil
                 )
                 .padding(18)
                 .background {
@@ -393,7 +468,10 @@ struct SettingsView: View {
                             BuiltTheme.mediumRadius,
                         style: .continuous
                     )
-                    .fill(.ultraThinMaterial)
+                    .fill(
+                        BuiltTheme.elevated
+                            .opacity(0.80)
+                    )
                     .overlay {
                         RoundedRectangle(
                             cornerRadius:
@@ -410,242 +488,535 @@ struct SettingsView: View {
             .buttonStyle(.plain)
             .disabled(storeManager.isBusy)
             .opacity(
-                storeManager.isBusy ? 0.6 : 1
+                storeManager.isBusy
+                ? 0.58
+                : 1
             )
         }
     }
 
-    private var systemPresenceSection: some View {
+    private var proActiveCopy: some View {
         VStack(
             alignment: .leading,
-            spacing: 18
+            spacing: BuiltTheme.Spacing.xSmall
         ) {
-            settingTitle(
-                "System presence",
-                icon:
-                    "iphone.gen3.radiowaves.left.and.right"
+            Text(
+                "The complete system is active."
+            )
+            .font(.title3.weight(.bold))
+            .foregroundStyle(
+                BuiltTheme.textPrimary
             )
 
+            Text(
+                "Thank you for supporting an independent, privacy-first quitting app."
+            )
+            .font(.subheadline)
+            .foregroundStyle(
+                BuiltTheme.textSecondary
+            )
+            .fixedSize(
+                horizontal: false,
+                vertical: true
+            )
+        }
+    }
+
+    private var systemPresenceSection:
+        some View {
+        BuiltSettingsSection(
+            title: "System presence",
+            symbolName:
+                "iphone.gen3.radiowaves.left.and.right"
+        ) {
             NavigationLink {
                 NotificationSettingsView(
                     profile: profile
                 )
             } label: {
-                settingsNavigationRow(
-                    icon: "bell.badge.fill",
+                BuiltSettingsNavigationRow(
+                    symbolName:
+                        notificationSymbolName,
                     title: "Notifications",
                     subtitle:
-                        "Identity, progress, and high-risk reminders"
+                        "Identity, progress, and high-risk reminders",
+                    value:
+                        notificationStatusText,
+                    tint:
+                        notificationStatus == .denied
+                        ? BuiltTheme.danger
+                        : BuiltTheme.accent
                 )
             }
             .buttonStyle(.plain)
 
-            Divider()
-                .overlay(BuiltTheme.hairline)
+            BuiltSettingsDivider()
 
-            settingsInformationRow(
-                icon:
+            BuiltSettingsInfoRow(
+                symbolName:
                     "rectangle.stack.badge.plus",
                 title:
                     "Widgets and Live Activity",
                 subtitle:
-                    "Add BUILT from the Home Screen or Lock Screen gallery."
+                    "Add BUILT from the Home Screen or Lock Screen gallery.",
+                value: "Available"
+            )
+
+            BuiltSettingsDivider()
+
+            BuiltSettingsInfoRow(
+                symbolName:
+                    "heart.text.clipboard",
+                title: "Apple Health",
+                subtitle:
+                    "Workout access is managed by iOS and remains optional.",
+                value: "Read only"
             )
         }
-        .builtCard()
     }
 
-    private var dataSection: some View {
-        VStack(
-            alignment: .leading,
-            spacing: 18
+    private var privacySection: some View {
+        BuiltSettingsSection(
+            title: "Privacy and data",
+            symbolName: "lock.shield"
         ) {
-            settingTitle(
-                "Your data",
-                icon: "lock.shield"
+            BuiltSettingsInfoRow(
+                symbolName: "iphone",
+                title:
+                    "Stored on this device",
+                subtitle:
+                    "\(cravings.count) cravings · \(photos.count) photos · \(rewardGoals.count) rewards",
+                value: "Local"
             )
 
-            HStack {
-                VStack(
-                    alignment: .leading,
-                    spacing: 4
-                ) {
-                    Text("Stored on this device")
-                        .font(
-                            .system(
-                                size: 15,
-                                weight: .semibold
-                            )
-                        )
-                        .foregroundStyle(
-                            BuiltTheme.textPrimary
-                        )
+            BuiltSettingsDivider()
 
-                    Text(
-                        "\(cravings.count) cravings · \(photos.count) photos · \(rewardGoals.count) rewards"
-                    )
-                    .font(.system(size: 12))
-                    .foregroundStyle(
-                        BuiltTheme.textSecondary
-                    )
-                }
+            BuiltSettingsInfoRow(
+                symbolName:
+                    "hand.raised.fill",
+                title:
+                    "Private by design",
+                subtitle:
+                    "BUILT does not require an account, show ads, or upload your quitting and fitness data.",
+                value: "No account"
+            )
 
-                Spacer()
+            BuiltSettingsDivider()
 
-                Image(systemName: "iphone")
-                    .foregroundStyle(
-                        BuiltTheme.accent
-                    )
-            }
-
-            Divider()
-                .overlay(BuiltTheme.hairline)
-
-            Button(role: .destructive) {
+            Button(
+                role: .destructive
+            ) {
                 showingDeleteAlert = true
             } label: {
-                HStack {
+                HStack(
+                    spacing:
+                        BuiltTheme.Spacing.medium
+                ) {
                     Image(systemName: "trash")
-                    Text("Delete all app data")
+                        .accessibilityHidden(true)
+
+                    VStack(
+                        alignment: .leading,
+                        spacing:
+                            BuiltTheme.Spacing.xSmall
+                    ) {
+                        Text(
+                            "Delete all app data"
+                        )
+                        .font(
+                            .headline
+                            .weight(.semibold)
+                        )
+
+                        Text(
+                            "Permanently remove local BUILT content and reminders"
+                        )
+                        .font(.caption)
+                    }
+
                     Spacer()
                 }
-                .font(
-                    .system(
-                        size: 15,
-                        weight: .semibold
-                    )
-                )
                 .foregroundStyle(
                     BuiltTheme.danger
                 )
+                .frame(
+                    minHeight:
+                        BuiltTheme.minimumTapTarget
+                )
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint(
+                "Shows a confirmation before deleting anything"
+            )
+        }
+    }
+
+    private var aboutSection: some View {
+        BuiltSettingsSection(
+            title: "About BUILT",
+            symbolName: "info.circle"
+        ) {
+            BuiltSettingsInfoRow(
+                symbolName: "hammer.fill",
+                title: "Built, not burned",
+                subtitle:
+                    "A fitness-identity system for quitting smoking.",
+                value:
+                    "Version \(appVersion)"
+            )
+
+            BuiltSettingsDivider()
+
+            Text(
+                "BUILT supports behavior change and personal tracking. It does not diagnose, treat, or replace medical care."
+            )
+            .font(.footnote)
+            .foregroundStyle(
+                BuiltTheme.textSecondary
+            )
+            .fixedSize(
+                horizontal: false,
+                vertical: true
+            )
+        }
+    }
+
+    private var packPriceRow: some View {
+        Group {
+            if dynamicTypeSize
+                .isAccessibilitySize {
+                VStack(
+                    alignment: .leading,
+                    spacing:
+                        BuiltTheme.Spacing.medium
+                ) {
+                    settingsFieldCopy(
+                        title: "Pack price",
+                        subtitle:
+                            "Used to calculate money protected"
+                    )
+
+                    HStack(
+                        spacing:
+                            BuiltTheme.Spacing.small
+                    ) {
+                        packPriceField
+                        currencyField
+                    }
+                }
+            } else {
+                HStack(
+                    spacing:
+                        BuiltTheme.Spacing.medium
+                ) {
+                    settingsFieldCopy(
+                        title: "Pack price",
+                        subtitle:
+                            "Used to calculate money protected"
+                    )
+
+                    Spacer()
+                    packPriceField
+                    currencyField
+                }
             }
         }
-        .builtCard()
+        .frame(
+            minHeight:
+                BuiltTheme.minimumTapTarget
+        )
     }
 
-    private func settingTitle(
-        _ title: String,
-        icon: String
-    ) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: icon)
-                .foregroundStyle(
-                    BuiltTheme.accent
+    private var packPriceField: some View {
+        TextField(
+            "15",
+            value: $profile.packPrice,
+            format:
+                .number.precision(
+                    .fractionLength(0...2)
                 )
-                .frame(width: 24)
-
-            Text(title)
-                .font(
-                    .system(
-                        size: 18,
-                        weight: .semibold
-                    )
-                )
-                .foregroundStyle(
-                    BuiltTheme.textPrimary
-                )
-        }
+        )
+        .keyboardType(.decimalPad)
+        .multilineTextAlignment(.trailing)
+        .font(
+            .headline
+            .weight(.semibold)
+            .monospacedDigit()
+        )
+        .foregroundStyle(
+            BuiltTheme.textPrimary
+        )
+        .padding(.horizontal, 12)
+        .frame(
+            width:
+                dynamicTypeSize.isAccessibilitySize
+                ? nil
+                : 92
+        )
+        .frame(minHeight: 44)
+        .background(
+            BuiltTheme.elevatedStrong,
+            in: RoundedRectangle(
+                cornerRadius: 12,
+                style: .continuous
+            )
+        )
+        .accessibilityLabel("Pack price")
     }
 
+    private var currencyField: some View {
+        TextField(
+            "USD",
+            text: $profile.currencyCode
+        )
+        .textInputAutocapitalization(.characters)
+        .autocorrectionDisabled()
+        .multilineTextAlignment(.center)
+        .font(
+            .subheadline
+            .weight(.bold)
+            .monospaced()
+        )
+        .foregroundStyle(
+            BuiltTheme.textPrimary
+        )
+        .frame(width: 68)
+        .frame(minHeight: 44)
+        .background(
+            BuiltTheme.elevatedStrong,
+            in: Capsule()
+        )
+        .accessibilityLabel(
+            "Three-letter currency code"
+        )
+    }
+
+    @ViewBuilder
     private func editableNumberRow(
         title: String,
-        value: Binding<Double>
+        subtitle: String,
+        value: Binding<Double>,
+        precision: ClosedRange<Int>
     ) -> some View {
-        HStack {
-            Text(title)
-                .font(
-                    .system(
-                        size: 15,
-                        weight: .medium
-                    )
-                )
-                .foregroundStyle(
-                    BuiltTheme.textPrimary
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(
+                alignment: .leading,
+                spacing:
+                    BuiltTheme.Spacing.medium
+            ) {
+                settingsFieldCopy(
+                    title: title,
+                    subtitle: subtitle
                 )
 
-            Spacer()
+                numberField(
+                    title: title,
+                    value: value,
+                    precision: precision
+                )
+            }
+        } else {
+            HStack(
+                spacing:
+                    BuiltTheme.Spacing.medium
+            ) {
+                settingsFieldCopy(
+                    title: title,
+                    subtitle: subtitle
+                )
 
-            TextField(
-                "0",
-                value: value,
-                format: .number.precision(
-                    .fractionLength(0...1)
+                Spacer()
+
+                numberField(
+                    title: title,
+                    value: value,
+                    precision: precision
                 )
+            }
+            .frame(
+                minHeight:
+                    BuiltTheme.minimumTapTarget
             )
-            .keyboardType(.decimalPad)
-            .multilineTextAlignment(.trailing)
-            .font(
-                .system(
-                    size: 17,
-                    weight: .semibold,
-                    design: .rounded
-                )
-            )
-            .frame(width: 88)
         }
     }
 
-    private func settingsNavigationRow(
-        icon: String,
+    private func settingsFieldCopy(
         title: String,
         subtitle: String
     ) -> some View {
-        HStack(spacing: 14) {
-            settingsInformationRow(
-                icon: icon,
-                title: title,
-                subtitle: subtitle
-            )
-
-            Image(systemName: "chevron.right")
+        VStack(
+            alignment: .leading,
+            spacing: BuiltTheme.Spacing.xSmall
+        ) {
+            Text(title)
                 .font(
-                    .system(
-                        size: 13,
-                        weight: .semibold
-                    )
+                    .subheadline
+                    .weight(.semibold)
                 )
+                .foregroundStyle(
+                    BuiltTheme.textPrimary
+                )
+
+            Text(subtitle)
+                .font(.caption)
                 .foregroundStyle(
                     BuiltTheme.textSecondary
                 )
         }
     }
 
-    private func settingsInformationRow(
-        icon: String,
+    private func numberField(
         title: String,
-        subtitle: String
+        value: Binding<Double>,
+        precision: ClosedRange<Int>
     ) -> some View {
-        HStack(spacing: 14) {
-            Image(systemName: icon)
-                .foregroundStyle(
-                    BuiltTheme.accent
+        TextField(
+            "0",
+            value: value,
+            format:
+                .number.precision(
+                    .fractionLength(precision)
                 )
-                .frame(width: 30)
+        )
+        .keyboardType(.decimalPad)
+        .multilineTextAlignment(.trailing)
+        .font(
+            .headline
+            .weight(.semibold)
+            .monospacedDigit()
+        )
+        .foregroundStyle(
+            BuiltTheme.textPrimary
+        )
+        .padding(.horizontal, 12)
+        .frame(
+            width:
+                dynamicTypeSize.isAccessibilitySize
+                ? nil
+                : 96
+        )
+        .frame(minHeight: 44)
+        .background(
+            BuiltTheme.elevatedStrong,
+            in: RoundedRectangle(
+                cornerRadius: 12,
+                style: .continuous
+            )
+        )
+        .accessibilityLabel(title)
+    }
 
-            VStack(
-                alignment: .leading,
-                spacing: 4
-            ) {
-                Text(title)
-                    .font(
-                        .system(
-                            size: 15,
-                            weight: .semibold
-                        )
-                    )
-                    .foregroundStyle(
-                        BuiltTheme.textPrimary
-                    )
+    private var calculationValuesAreValid:
+        Bool {
+        profile.cigarettesPerDay > 0
+        && profile.cigarettesPerPack > 0
+        && profile.packPrice > 0
+        && profile.currencyCode.count == 3
+    }
 
-                Text(subtitle)
-                    .font(.system(size: 12))
-                    .foregroundStyle(
-                        BuiltTheme.textSecondary
-                    )
-            }
-
-            Spacer(minLength: 0)
+    private var notificationStatusText:
+        String {
+        switch notificationStatus {
+        case .notDetermined:
+            return "Not set"
+        case .denied:
+            return "Off"
+        case .authorized:
+            return "Allowed"
+        case .provisional:
+            return "Quiet"
+        case .ephemeral:
+            return "Temporary"
+        @unknown default:
+            return "Unknown"
         }
+    }
+
+    private var notificationSymbolName:
+        String {
+        switch notificationStatus {
+        case .denied:
+            return "bell.slash.fill"
+        case .authorized,
+             .provisional,
+             .ephemeral:
+            return "bell.badge.fill"
+        default:
+            return "bell.fill"
+        }
+    }
+
+    @MainActor
+    private func refreshNotificationStatus()
+        async {
+        notificationStatus =
+            await NotificationManager
+                .shared
+                .authorizationStatus()
+    }
+
+    private func saveAndDismiss() {
+        guard !isSaving else {
+            return
+        }
+
+        isSaving = true
+
+        defer {
+            isSaving = false
+        }
+
+        guard saveChanges() else {
+            return
+        }
+
+        dismiss()
+    }
+
+    @discardableResult
+    private func saveChanges() -> Bool {
+        guard calculationValuesAreValid
+        else {
+            saveErrorMessage =
+                "Enter positive smoking values and a valid three-letter currency code before saving."
+            Haptics.warning()
+            return false
+        }
+
+        do {
+            try modelContext.save()
+
+            WidgetSyncService.sync(
+                profile: profile,
+                cravings: cravings,
+                rewardGoals: rewardGoals
+            )
+
+            return true
+        } catch {
+            saveErrorMessage =
+                "BUILT could not save these changes to the local database. \(error.localizedDescription)"
+            Haptics.warning()
+            return false
+        }
+    }
+
+    private func restartTimer() {
+        let oldDate = profile.quitDate
+        let oldCount = profile.slipCount
+
+        profile.quitDate = .now
+        profile.slipCount += 1
+        RecoveryCelebrationStore.reset()
+
+        guard saveChanges() else {
+            profile.quitDate = oldDate
+            profile.slipCount = oldCount
+            return
+        }
+
+        Haptics.warning()
     }
 
     private func deleteEverything() {
@@ -662,15 +1033,26 @@ struct SettingsView: View {
         }
 
         modelContext.delete(profile)
-        try? modelContext.save()
+
+        do {
+            try modelContext.save()
+        } catch {
+            saveErrorMessage =
+                "BUILT could not delete the local database. Nothing outside the database was cleared."
+            Haptics.warning()
+            return
+        }
 
         WidgetSyncService.clear()
         NotificationPreferencesStore.reset()
         RecoveryCelebrationStore.reset()
 
         Task {
-            await NotificationManager.shared.cancelAll()
-            await LiveActivityManager.shared.cancel()
+            await NotificationManager.shared
+                .cancelAll()
+
+            await LiveActivityManager.shared
+                .cancel()
         }
 
         dismiss()

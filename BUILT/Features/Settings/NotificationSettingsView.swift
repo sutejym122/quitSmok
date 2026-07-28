@@ -8,10 +8,23 @@ struct NotificationSettingsView: View {
     @Environment(\.openURL)
     private var openURL
 
-    @State private var preferences = NotificationPreferencesStore.load()
-    @State private var authorizationStatus: UNAuthorizationStatus = .notDetermined
+    @Environment(\.scenePhase)
+    private var scenePhase
+
+    @Environment(\.dynamicTypeSize)
+    private var dynamicTypeSize
+
+    @State private var preferences =
+        NotificationPreferencesStore.load()
+
+    @State private var authorizationStatus:
+        UNAuthorizationStatus =
+            .notDetermined
+
     @State private var isWorking = false
     @State private var statusMessage: String?
+    @State private var statusKind:
+        BuiltStatusKind = .neutral
 
     var body: some View {
         ZStack {
@@ -20,31 +33,79 @@ struct NotificationSettingsView: View {
             ScrollView {
                 VStack(
                     alignment: .leading,
-                    spacing: 24
+                    spacing:
+                        BuiltTheme.Spacing.xLarge
                 ) {
                     introduction
-                    permissionCard
-                    reminderSchedule
-                    milestoneCard
-                    primaryAction
+                    permissionSection
+
+                    if canSchedule {
+                        reminderSchedule
+                        milestoneSection
+                    }
+
+                    if let statusMessage {
+                        BuiltStatusCard(
+                            kind: statusKind,
+                            title:
+                                statusKind == .success
+                                ? "Reminders updated"
+                                : "Notification status",
+                            message: statusMessage
+                        )
+                    }
                 }
-                .padding(.horizontal, 20)
+                .padding(
+                    .horizontal,
+                    BuiltTheme.Spacing
+                        .screenHorizontal
+                )
                 .padding(.top, 16)
-                .padding(.bottom, 40)
+                .padding(.bottom, 30)
             }
+            .scrollIndicators(.hidden)
         }
         .navigationTitle("Notifications")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarBackground(
+            .ultraThinMaterial,
+            for: .navigationBar
+        )
+        .toolbarBackground(
+            .visible,
+            for: .navigationBar
+        )
+        .safeAreaInset(
+            edge: .bottom,
+            spacing: 0
+        ) {
+            bottomAction
+        }
         .task {
             await refreshAuthorizationStatus()
         }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else {
+                return
+            }
+
+            Task {
+                await refreshAuthorizationStatus()
+            }
+        }
         .onChange(of: preferences) { _, newValue in
-            NotificationPreferencesStore.save(newValue)
+            NotificationPreferencesStore
+                .save(newValue)
+
+            statusMessage = nil
         }
         .onDisappear {
-            NotificationPreferencesStore.save(preferences)
+            NotificationPreferencesStore
+                .save(preferences)
+
+            guard canSchedule else {
+                return
+            }
 
             Task {
                 await scheduleCurrentPreferences()
@@ -53,307 +114,449 @@ struct NotificationSettingsView: View {
     }
 
     private var introduction: some View {
-        VStack(
-            alignment: .leading,
-            spacing: 12
-        ) {
-            Text("SYSTEM PRESENCE")
-                .font(
-                    .system(
-                        size: 11,
-                        weight: .bold
-                    )
-                )
-                .tracking(1.8)
-                .foregroundStyle(BuiltTheme.accent)
-
-            Text("Let BUILT reach you before the craving does.")
-                .font(
-                    .system(
-                        size: 34,
-                        weight: .bold
-                    )
-                )
-                .tracking(-1.1)
-                .foregroundStyle(BuiltTheme.textPrimary)
-
-            Text(
-                "Use only the reminders that feel useful. Everything is scheduled locally on your iPhone."
-            )
-            .font(.system(size: 15))
-            .foregroundStyle(BuiltTheme.textSecondary)
-            .fixedSize(horizontal: false, vertical: true)
-        }
+        BuiltHeroPanel(
+            eyebrow: "System presence",
+            title:
+                "Let BUILT reach you before the craving does.",
+            message:
+                "Use only the reminders that feel useful. Scheduling stays local to your iPhone.",
+            systemName:
+                "bell.badge.fill",
+            trailingValue:
+                permissionShortStatus,
+            trailingLabel:
+                "Permission"
+        )
     }
 
-    private var permissionCard: some View {
-        VStack(
-            alignment: .leading,
-            spacing: 18
-        ) {
-            HStack(spacing: 14) {
-                Image(systemName: permissionIcon)
-                    .font(
-                        .system(
-                            size: 18,
-                            weight: .semibold
-                        )
-                    )
-                    .foregroundStyle(permissionColor)
-                    .frame(width: 42, height: 42)
-                    .background(
-                        permissionColor.opacity(0.12),
-                        in: Circle()
-                    )
-
-                VStack(
-                    alignment: .leading,
-                    spacing: 4
-                ) {
-                    Text("Notification access")
-                        .font(
-                            .system(
-                                size: 17,
-                                weight: .semibold
-                            )
-                        )
-                        .foregroundStyle(BuiltTheme.textPrimary)
-
-                    Text(permissionStatusText)
-                        .font(.system(size: 13))
-                        .foregroundStyle(BuiltTheme.textSecondary)
+    @ViewBuilder
+    private var permissionSection: some View {
+        switch authorizationStatus {
+        case .notDetermined:
+            BuiltStatusCard(
+                kind: .neutral,
+                title:
+                    "Notifications are optional",
+                message:
+                    "BUILT can deliver identity, progress, high-risk, and milestone reminders. You choose whether to allow them.",
+                primaryActionTitle:
+                    "Enable notifications",
+                primaryAction: {
+                    Task {
+                        await requestPermission()
+                    }
                 }
+            )
 
-                Spacer()
-            }
+        case .denied:
+            BuiltStatusCard(
+                kind: .warning,
+                title:
+                    "Notifications are off",
+                message:
+                    "iOS has disabled BUILT notifications. Your schedules remain saved locally and can resume after access is restored.",
+                primaryActionTitle:
+                    "Open iPhone Settings",
+                primaryAction:
+                    openAppSettings
+            )
 
-            if isAuthorized {
+        case .authorized,
+             .provisional,
+             .ephemeral:
+            BuiltSettingsSection(
+                title:
+                    "Notification access",
+                symbolName:
+                    permissionIcon
+            ) {
+                BuiltSettingsInfoRow(
+                    symbolName:
+                        permissionIcon,
+                    title:
+                        permissionStatusTitle,
+                    subtitle:
+                        permissionStatusMessage,
+                    value:
+                        permissionShortStatus,
+                    tint:
+                        permissionColor
+                )
+
+                BuiltSettingsDivider()
+
                 Toggle(
-                    "Enable BUILT reminders",
-                    isOn: $preferences.masterEnabled
-                )
-                .font(
-                    .system(
-                        size: 15,
-                        weight: .semibold
-                    )
-                )
+                    isOn:
+                        $preferences
+                            .masterEnabled
+                ) {
+                    VStack(
+                        alignment: .leading,
+                        spacing:
+                            BuiltTheme.Spacing.xSmall
+                    ) {
+                        Text(
+                            "Enable BUILT reminders"
+                        )
+                        .font(
+                            .headline
+                            .weight(.semibold)
+                        )
+                        .foregroundStyle(
+                            BuiltTheme.textPrimary
+                        )
+
+                        Text(
+                            "One switch pauses every local reminder without deleting your schedule."
+                        )
+                        .font(.caption)
+                        .foregroundStyle(
+                            BuiltTheme.textSecondary
+                        )
+                    }
+                }
                 .tint(BuiltTheme.accent)
+                .frame(
+                    minHeight:
+                        BuiltTheme.minimumTapTarget
+                )
             }
+
+        @unknown default:
+            BuiltStatusCard(
+                kind: .warning,
+                title:
+                    "Notification status unavailable",
+                message:
+                    "BUILT could not interpret the current iOS notification status. Open Settings to review access.",
+                primaryActionTitle:
+                    "Open iPhone Settings",
+                primaryAction:
+                    openAppSettings
+            )
         }
-        .builtCard()
     }
 
     private var reminderSchedule: some View {
-        VStack(
-            alignment: .leading,
-            spacing: 18
+        BuiltSettingsSection(
+            title: "Daily reminders",
+            symbolName: "clock"
         ) {
-            sectionTitle(
-                title: "Daily reminders",
-                icon: "clock"
+            reminderRow(
+                title:
+                    "Morning identity",
+                subtitle:
+                    "Start the day with your reason.",
+                symbolName: "sun.max.fill",
+                isOn:
+                    $preferences.morningEnabled,
+                time:
+                    timeBinding(
+                        hour:
+                            $preferences.morningHour,
+                        minute:
+                            $preferences.morningMinute
+                    )
             )
 
+            BuiltSettingsDivider()
+
             reminderRow(
-                title: "Morning identity",
-                subtitle: "Start the day with your reason.",
-                isOn: $preferences.morningEnabled,
-                time: timeBinding(
-                    hour: $preferences.morningHour,
-                    minute: $preferences.morningMinute
-                )
+                title:
+                    "Evening progress",
+                subtitle:
+                    "Recognize another protected day.",
+                symbolName:
+                    "moon.stars.fill",
+                isOn:
+                    $preferences.eveningEnabled,
+                time:
+                    timeBinding(
+                        hour:
+                            $preferences.eveningHour,
+                        minute:
+                            $preferences.eveningMinute
+                    )
             )
 
-            Divider()
-                .overlay(BuiltTheme.hairline)
+            BuiltSettingsDivider()
 
             reminderRow(
-                title: "Evening progress",
-                subtitle: "Recognize another protected day.",
-                isOn: $preferences.eveningEnabled,
-                time: timeBinding(
-                    hour: $preferences.eveningHour,
-                    minute: $preferences.eveningMinute
-                )
-            )
-
-            Divider()
-                .overlay(BuiltTheme.hairline)
-
-            reminderRow(
-                title: "High-risk time",
-                subtitle: "Set the hour cravings usually appear.",
-                isOn: $preferences.riskEnabled,
-                time: timeBinding(
-                    hour: $preferences.riskHour,
-                    minute: $preferences.riskMinute
-                )
+                title:
+                    "High-risk time",
+                subtitle:
+                    "Set the hour cravings usually appear.",
+                symbolName:
+                    "bolt.heart.fill",
+                isOn:
+                    $preferences.riskEnabled,
+                time:
+                    timeBinding(
+                        hour:
+                            $preferences.riskHour,
+                        minute:
+                            $preferences.riskMinute
+                    )
             )
         }
-        .opacity(preferences.masterEnabled ? 1 : 0.48)
-        .disabled(!preferences.masterEnabled)
-        .builtCard()
+        .opacity(
+            preferences.masterEnabled
+            ? 1
+            : 0.48
+        )
+        .disabled(
+            !preferences.masterEnabled
+        )
+        .accessibilityHint(
+            preferences.masterEnabled
+            ? ""
+            : "Enable BUILT reminders to edit this schedule"
+        )
     }
 
-    private var milestoneCard: some View {
-        VStack(
-            alignment: .leading,
-            spacing: 18
+    private var milestoneSection: some View {
+        BuiltSettingsSection(
+            title: "Milestones",
+            symbolName: "trophy"
         ) {
-            sectionTitle(
-                title: "Milestones",
-                icon: "trophy"
-            )
-
             Toggle(
-                isOn: $preferences.milestonesEnabled
+                isOn:
+                    $preferences.milestonesEnabled
             ) {
-                VStack(
-                    alignment: .leading,
-                    spacing: 4
+                HStack(
+                    alignment: .top,
+                    spacing:
+                        BuiltTheme.Spacing.medium
                 ) {
-                    Text("Celebrate major streaks")
-                        .font(
-                            .system(
-                                size: 15,
-                                weight: .semibold
-                            )
-                        )
-                        .foregroundStyle(BuiltTheme.textPrimary)
+                    Image(
+                        systemName:
+                            "trophy.fill"
+                    )
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(
+                        BuiltTheme.accent
+                    )
+                    .frame(
+                        width: 40,
+                        height: 40
+                    )
+                    .background(
+                        BuiltTheme.accent
+                            .opacity(0.11),
+                        in: Circle()
+                    )
+                    .accessibilityHidden(true)
 
-                    Text("2 days, 3 days, 1 week, 30 days, and beyond.")
-                        .font(.system(size: 12))
-                        .foregroundStyle(BuiltTheme.textSecondary)
+                    VStack(
+                        alignment: .leading,
+                        spacing:
+                            BuiltTheme.Spacing.xSmall
+                    ) {
+                        Text(
+                            "Celebrate major streaks"
+                        )
+                        .font(
+                            .headline
+                            .weight(.semibold)
+                        )
+                        .foregroundStyle(
+                            BuiltTheme.textPrimary
+                        )
+
+                        Text(
+                            "2 days, 3 days, 1 week, 30 days, and beyond."
+                        )
+                        .font(.caption)
+                        .foregroundStyle(
+                            BuiltTheme.textSecondary
+                        )
+                    }
                 }
             }
             .tint(BuiltTheme.accent)
+            .frame(
+                minHeight:
+                    BuiltTheme.minimumTapTarget
+            )
         }
-        .opacity(preferences.masterEnabled ? 1 : 0.48)
-        .disabled(!preferences.masterEnabled)
-        .builtCard()
+        .opacity(
+            preferences.masterEnabled
+            ? 1
+            : 0.48
+        )
+        .disabled(
+            !preferences.masterEnabled
+        )
     }
 
-    private var primaryAction: some View {
-        VStack(spacing: 12) {
-            if authorizationStatus == .denied {
-                Button {
-                    Task {
-                        await handlePrimaryAction()
-                    }
-                } label: {
-                    primaryActionLabel
-                }
-                .buttonStyle(BuiltSecondaryButtonStyle())
-                .disabled(isWorking)
-            } else {
-                Button {
-                    Task {
-                        await handlePrimaryAction()
-                    }
-                } label: {
-                    primaryActionLabel
-                }
-                .buttonStyle(BuiltPrimaryButtonStyle())
-                .disabled(isWorking)
-            }
+    private var bottomAction: some View {
+        VStack(spacing: 0) {
+            Divider()
+                .overlay(
+                    BuiltTheme.hairline
+                )
 
-            if let statusMessage {
-                Text(statusMessage)
-                    .font(
-                        .system(
-                            size: 12,
-                            weight: .medium
+            Button {
+                Task {
+                    await handleBottomAction()
+                }
+            } label: {
+                HStack(spacing: 12) {
+                    if isWorking {
+                        ProgressView()
+                            .tint(
+                                bottomButtonForeground
+                            )
+                            .accessibilityHidden(true)
+                    } else {
+                        Image(
+                            systemName:
+                                bottomButtonIcon
                         )
-                    )
-                    .foregroundStyle(BuiltTheme.textSecondary)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
+                        .accessibilityHidden(true)
+                    }
+
+                    Text(bottomButtonTitle)
+
+                    Spacer()
+
+                    if !isWorking {
+                        Image(
+                            systemName:
+                                "arrow.right"
+                        )
+                        .accessibilityHidden(true)
+                    }
+                }
             }
+            .modifier(
+                NotificationBottomButtonModifier(
+                    useSecondaryStyle:
+                        authorizationStatus == .denied
+                )
+            )
+            .disabled(isWorking)
+            .padding(
+                .horizontal,
+                BuiltTheme.Spacing
+                    .screenHorizontal
+            )
+            .padding(.vertical, 12)
         }
-    }
-
-    private var primaryActionLabel: some View {
-        HStack {
-            if isWorking {
-                ProgressView()
-                    .tint(primaryButtonForeground)
-            } else {
-                Image(systemName: primaryButtonIcon)
-            }
-
-            Text(primaryButtonTitle)
-
-            Spacer()
-
-            if !isWorking {
-                Image(systemName: "arrow.right")
-            }
-        }
+        .background(.ultraThinMaterial)
     }
 
     private func reminderRow(
         title: String,
         subtitle: String,
+        symbolName: String,
         isOn: Binding<Bool>,
         time: Binding<Date>
     ) -> some View {
-        VStack(spacing: 14) {
+        VStack(
+            alignment: .leading,
+            spacing: BuiltTheme.Spacing.medium
+        ) {
             Toggle(isOn: isOn) {
-                VStack(
-                    alignment: .leading,
-                    spacing: 4
+                HStack(
+                    alignment: .top,
+                    spacing:
+                        BuiltTheme.Spacing.medium
                 ) {
-                    Text(title)
-                        .font(
-                            .system(
-                                size: 15,
-                                weight: .semibold
-                            )
+                    Image(systemName: symbolName)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(
+                            BuiltTheme.accent
                         )
-                        .foregroundStyle(BuiltTheme.textPrimary)
+                        .frame(
+                            width: 40,
+                            height: 40
+                        )
+                        .background(
+                            BuiltTheme.accent
+                                .opacity(0.11),
+                            in: Circle()
+                        )
+                        .accessibilityHidden(true)
 
-                    Text(subtitle)
-                        .font(.system(size: 12))
-                        .foregroundStyle(BuiltTheme.textSecondary)
+                    VStack(
+                        alignment: .leading,
+                        spacing:
+                            BuiltTheme.Spacing.xSmall
+                    ) {
+                        Text(title)
+                            .font(
+                                .headline
+                                .weight(.semibold)
+                            )
+                            .foregroundStyle(
+                                BuiltTheme.textPrimary
+                            )
+
+                        Text(subtitle)
+                            .font(.caption)
+                            .foregroundStyle(
+                                BuiltTheme.textSecondary
+                            )
+                            .fixedSize(
+                                horizontal: false,
+                                vertical: true
+                            )
+                    }
                 }
             }
             .tint(BuiltTheme.accent)
+            .frame(
+                minHeight:
+                    BuiltTheme.minimumTapTarget
+            )
 
             if isOn.wrappedValue {
-                DatePicker(
-                    "Delivery time",
-                    selection: time,
-                    displayedComponents: .hourAndMinute
-                )
-                .font(
-                    .system(
-                        size: 13,
-                        weight: .medium
-                    )
-                )
+                Group {
+                    if dynamicTypeSize.isAccessibilitySize {
+                        VStack(
+                            alignment: .leading,
+                            spacing:
+                                BuiltTheme.Spacing.small
+                        ) {
+                            Text("Delivery time")
+                                .font(
+                                    .subheadline
+                                    .weight(.semibold)
+                                )
+                                .foregroundStyle(
+                                    BuiltTheme.textSecondary
+                                )
+
+                            DatePicker(
+                                "Delivery time",
+                                selection: time,
+                                displayedComponents:
+                                    .hourAndMinute
+                            )
+                            .labelsHidden()
+                        }
+                    } else {
+                        DatePicker(
+                            "Delivery time",
+                            selection: time,
+                            displayedComponents:
+                                .hourAndMinute
+                        )
+                    }
+                }
                 .datePickerStyle(.compact)
                 .tint(BuiltTheme.accent)
-            }
-        }
-    }
-
-    private func sectionTitle(
-        title: String,
-        icon: String
-    ) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: icon)
-                .foregroundStyle(BuiltTheme.accent)
-                .frame(width: 24)
-
-            Text(title)
-                .font(
-                    .system(
-                        size: 18,
-                        weight: .semibold
+                .padding(14)
+                .background(
+                    BuiltTheme.elevatedStrong,
+                    in: RoundedRectangle(
+                        cornerRadius:
+                            BuiltTheme.smallRadius,
+                        style: .continuous
                     )
                 )
-                .foregroundStyle(BuiltTheme.textPrimary)
+            }
         }
     }
 
@@ -364,52 +567,102 @@ struct NotificationSettingsView: View {
         Binding(
             get: {
                 Calendar.current.date(
-                    bySettingHour: hour.wrappedValue,
-                    minute: minute.wrappedValue,
+                    bySettingHour:
+                        hour.wrappedValue,
+                    minute:
+                        minute.wrappedValue,
                     second: 0,
                     of: .now
                 ) ?? .now
             },
             set: { newValue in
-                let components = Calendar.current.dateComponents(
-                    [.hour, .minute],
-                    from: newValue
-                )
+                let components =
+                    Calendar.current
+                        .dateComponents(
+                            [.hour, .minute],
+                            from: newValue
+                        )
 
-                hour.wrappedValue = components.hour ?? 8
-                minute.wrappedValue = components.minute ?? 0
+                hour.wrappedValue =
+                    components.hour
+                    ?? 8
+
+                minute.wrappedValue =
+                    components.minute
+                    ?? 0
             }
         )
     }
 
-    private var isAuthorized: Bool {
-        authorizationStatus == .authorized
-            || authorizationStatus == .provisional
+    private var canSchedule: Bool {
+        switch authorizationStatus {
+        case .authorized,
+             .provisional,
+             .ephemeral:
+            return true
+        default:
+            return false
+        }
     }
 
-    private var permissionStatusText: String {
+    private var permissionShortStatus: String {
         switch authorizationStatus {
         case .notDetermined:
-            return "Not requested yet"
+            return "NOT SET"
         case .denied:
-            return "Disabled in iPhone Settings"
+            return "OFF"
         case .authorized:
-            return "Allowed"
+            return "ALLOWED"
         case .provisional:
-            return "Delivered quietly"
+            return "QUIET"
         case .ephemeral:
-            return "Temporarily allowed"
+            return "TEMPORARY"
         @unknown default:
-            return "Unknown"
+            return "UNKNOWN"
+        }
+    }
+
+    private var permissionStatusTitle: String {
+        switch authorizationStatus {
+        case .authorized:
+            return
+                "Notifications are allowed"
+        case .provisional:
+            return
+                "Notifications are delivered quietly"
+        case .ephemeral:
+            return
+                "Notifications are temporarily allowed"
+        default:
+            return "Notification access"
+        }
+    }
+
+    private var permissionStatusMessage: String {
+        switch authorizationStatus {
+        case .authorized:
+            return
+                "Alerts can appear according to the schedule below."
+        case .provisional:
+            return
+                "iOS may place reminders in Notification Center without interrupting you."
+        case .ephemeral:
+            return
+                "iOS has granted temporary access for this session."
+        default:
+            return
+                "Notification access has not been configured."
         }
     }
 
     private var permissionIcon: String {
         switch authorizationStatus {
-        case .authorized, .provisional, .ephemeral:
-            return "bell.badge.fill"
         case .denied:
             return "bell.slash.fill"
+        case .authorized,
+             .provisional,
+             .ephemeral:
+            return "bell.badge.fill"
         default:
             return "bell.fill"
         }
@@ -417,35 +670,55 @@ struct NotificationSettingsView: View {
 
     private var permissionColor: Color {
         authorizationStatus == .denied
-            ? BuiltTheme.danger
-            : BuiltTheme.accent
+        ? BuiltTheme.danger
+        : BuiltTheme.accent
     }
 
-    private var primaryButtonTitle: String {
+    private var bottomButtonTitle: String {
         switch authorizationStatus {
         case .notDetermined:
-            return "Enable notifications"
+            return
+                "Enable notifications"
         case .denied:
-            return "Open iPhone Settings"
+            return
+                "Open iPhone Settings"
         default:
-            return "Save reminder schedule"
+            return isWorking
+                ? "Saving schedule…"
+                : "Save reminder schedule"
         }
     }
 
-    private var primaryButtonIcon: String {
+    private var bottomButtonIcon: String {
         authorizationStatus == .denied
-            ? "gear"
-            : "bell.badge"
+        ? "gear"
+        : "bell.badge"
     }
 
-    private var primaryButtonForeground: Color {
+    private var bottomButtonForeground: Color {
         authorizationStatus == .denied
-            ? BuiltTheme.textPrimary
-            : .black
+        ? BuiltTheme.textPrimary
+        : .black
     }
 
     @MainActor
-    private func handlePrimaryAction() async {
+    private func handleBottomAction() async {
+        switch authorizationStatus {
+        case .notDetermined:
+            await requestPermission()
+        case .denied:
+            openAppSettings()
+        default:
+            await saveSchedule()
+        }
+    }
+
+    @MainActor
+    private func requestPermission() async {
+        guard !isWorking else {
+            return
+        }
+
         isWorking = true
         statusMessage = nil
 
@@ -453,55 +726,106 @@ struct NotificationSettingsView: View {
             isWorking = false
         }
 
-        switch authorizationStatus {
-        case .notDetermined:
-            let granted = await NotificationManager.shared.requestAuthorization()
-            await refreshAuthorizationStatus()
+        let granted =
+            await NotificationManager.shared
+                .requestAuthorization()
 
-            if granted {
-                preferences.masterEnabled = true
-                NotificationPreferencesStore.save(preferences)
-                await scheduleCurrentPreferences()
-                statusMessage = "Notifications are enabled and scheduled."
-                Haptics.success()
-            } else {
-                statusMessage = "Notification permission was not granted."
-                Haptics.warning()
-            }
+        await refreshAuthorizationStatus()
 
-        case .denied:
-            guard let settingsURL = URL(
-                string: UIApplication.openSettingsURLString
-            ) else {
-                return
-            }
+        if granted {
+            preferences.masterEnabled = true
+            NotificationPreferencesStore
+                .save(preferences)
 
-            openURL(settingsURL)
-
-        default:
-            NotificationPreferencesStore.save(preferences)
             await scheduleCurrentPreferences()
-            statusMessage = preferences.masterEnabled
-                ? "Your reminders have been updated."
-                : "BUILT reminders are turned off."
+
+            statusKind = .success
+            statusMessage =
+                "Notifications are enabled and your current schedule is active."
             Haptics.success()
+        } else {
+            statusKind = .warning
+            statusMessage =
+                "Notification permission was not granted. You can continue using every core BUILT feature without reminders."
+            Haptics.warning()
         }
     }
 
     @MainActor
+    private func saveSchedule() async {
+        guard !isWorking else {
+            return
+        }
+
+        isWorking = true
+        statusMessage = nil
+
+        defer {
+            isWorking = false
+        }
+
+        NotificationPreferencesStore
+            .save(preferences)
+
+        await scheduleCurrentPreferences()
+
+        statusKind = .success
+        statusMessage =
+            preferences.masterEnabled
+            ? "Your local reminder schedule has been updated."
+            : "All BUILT reminders are paused. Your schedule remains saved."
+
+        Haptics.success()
+    }
+
+    @MainActor
     private func refreshAuthorizationStatus() async {
-        authorizationStatus = await NotificationManager.shared.authorizationStatus()
+        authorizationStatus =
+            await NotificationManager.shared
+                .authorizationStatus()
+    }
+
+    private func openAppSettings() {
+        guard let settingsURL = URL(
+            string:
+                UIApplication.openSettingsURLString
+        ) else {
+            return
+        }
+
+        openURL(settingsURL)
     }
 
     private func scheduleCurrentPreferences() async {
-        let scheduleProfile = NotificationScheduleProfile(
-            quitDate: profile.quitDate,
-            identityStatement: profile.identityStatement
-        )
+        let scheduleProfile =
+            NotificationScheduleProfile(
+                quitDate: profile.quitDate,
+                identityStatement:
+                    profile.identityStatement
+            )
 
-        await NotificationManager.shared.schedule(
-            preferences: preferences,
-            profile: scheduleProfile
-        )
+        await NotificationManager.shared
+            .schedule(
+                preferences: preferences,
+                profile: scheduleProfile
+            )
+    }
+}
+
+private struct NotificationBottomButtonModifier:
+    ViewModifier {
+    let useSecondaryStyle: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if useSecondaryStyle {
+            content.buttonStyle(
+                BuiltSecondaryButtonStyle()
+            )
+        } else {
+            content.buttonStyle(
+                BuiltPrimaryButtonStyle()
+            )
+        }
     }
 }

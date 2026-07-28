@@ -451,7 +451,7 @@ public struct WidgetSnapshot: Codable, Equatable, Sendable {
         guard
             let activeRewardTargetAmount
         else {
-            return nil
+            return nil 
         }
 
         return activeRewardTargetAmount.formatted(

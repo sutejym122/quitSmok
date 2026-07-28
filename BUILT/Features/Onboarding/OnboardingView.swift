@@ -43,6 +43,92 @@ struct OnboardingView: View {
     @State private var isFinishing = false
     @State private var completionError: String?
 
+    @Environment(\.accessibilityReduceMotion)
+    private var reduceMotion
+
+    @Environment(\.dynamicTypeSize)
+    private var dynamicTypeSize
+
+    private var onboardingColumns: [GridItem] {
+        if dynamicTypeSize.isAccessibilitySize {
+            return [
+                GridItem(
+                    .flexible(),
+                    spacing: 11
+                )
+            ]
+        }
+
+        return [
+            GridItem(
+                .flexible(),
+                spacing: 11
+            ),
+            GridItem(
+                .flexible(),
+                spacing: 11
+            )
+        ]
+    }
+
+    private var onboardingChipColumns: [GridItem] {
+        if dynamicTypeSize.isAccessibilitySize {
+            return [
+                GridItem(
+                    .flexible(),
+                    spacing: 10
+                )
+            ]
+        }
+
+        return [
+            GridItem(
+                .adaptive(minimum: 118),
+                spacing: 10
+            )
+        ]
+    }
+
+    private var onboardingPhotoHeight: CGFloat {
+        dynamicTypeSize.isAccessibilitySize
+        ? 300
+        : 380
+    }
+
+    private var onboardingPickerHeight: CGFloat {
+        dynamicTypeSize.isAccessibilitySize
+        ? 270
+        : 330
+    }
+
+    private var onboardingStepTransition:
+        AnyTransition {
+        guard !reduceMotion else {
+            return .opacity
+        }
+
+        return .asymmetric(
+            insertion:
+                .opacity.combined(
+                    with: .move(
+                        edge:
+                            direction > 0
+                            ? .trailing
+                            : .leading
+                    )
+                ),
+            removal:
+                .opacity.combined(
+                    with: .move(
+                        edge:
+                            direction > 0
+                            ? .leading
+                            : .trailing
+                    )
+                )
+        )
+    }
+
     private var progressStepIndex: Int {
         step.rawValue
     }
@@ -102,26 +188,7 @@ struct OnboardingView: View {
                     stepContent
                         .id(step)
                         .transition(
-                            .asymmetric(
-                                insertion:
-                                    .opacity.combined(
-                                        with: .move(
-                                            edge:
-                                                direction > 0
-                                                ? .trailing
-                                                : .leading
-                                        )
-                                    ),
-                                removal:
-                                    .opacity.combined(
-                                        with: .move(
-                                            edge:
-                                                direction > 0
-                                                ? .leading
-                                                : .trailing
-                                        )
-                                    )
-                            )
+                            onboardingStepTransition
                         )
                 }
                 .frame(
@@ -148,10 +215,9 @@ struct OnboardingView: View {
             }
         }
         .animation(
-            .spring(
-                response: 0.46,
-                dampingFraction: 0.88
-            ),
+            reduceMotion
+            ? nil
+            : BuiltTheme.Motion.standard,
             value: step
         )
         .sheet(isPresented: $showingPaywall) {
@@ -314,12 +380,21 @@ struct OnboardingView: View {
                             "Quit smoking.\nProtect what you built."
                         )
                         .font(
-                            .system(
+                            dynamicTypeSize
+                                .isAccessibilitySize
+                            ? .largeTitle
+                                .weight(.bold)
+                            : .system(
                                 size: 48,
                                 weight: .bold
                             )
                         )
-                        .tracking(-1.9)
+                        .tracking(
+                            dynamicTypeSize
+                                .isAccessibilitySize
+                            ? 0
+                            : -1.9
+                        )
                         .foregroundStyle(
                             BuiltTheme.textPrimary
                         )
@@ -343,22 +418,55 @@ struct OnboardingView: View {
                         )
                     }
 
-                    HStack(spacing: 10) {
-                        welcomePill(
-                            icon: "bolt.heart.fill",
-                            text: "Craving Rescue"
-                        )
+                    Group {
+                        if dynamicTypeSize
+                            .isAccessibilitySize {
+                            VStack(spacing: 10) {
+                                welcomePill(
+                                    icon:
+                                        "bolt.heart.fill",
+                                    text:
+                                        "Craving Rescue"
+                                )
 
-                        welcomePill(
-                            icon:
-                                "figure.strengthtraining.traditional",
-                            text: "Fitness proof"
-                        )
+                                welcomePill(
+                                    icon:
+                                        "figure.strengthtraining.traditional",
+                                    text:
+                                        "Fitness proof"
+                                )
 
-                        welcomePill(
-                            icon: "banknote.fill",
-                            text: "Money protected"
-                        )
+                                welcomePill(
+                                    icon:
+                                        "banknote.fill",
+                                    text:
+                                        "Money protected"
+                                )
+                            }
+                        } else {
+                            HStack(spacing: 10) {
+                                welcomePill(
+                                    icon:
+                                        "bolt.heart.fill",
+                                    text:
+                                        "Craving Rescue"
+                                )
+
+                                welcomePill(
+                                    icon:
+                                        "figure.strengthtraining.traditional",
+                                    text:
+                                        "Fitness proof"
+                                )
+
+                                welcomePill(
+                                    icon:
+                                        "banknote.fill",
+                                    text:
+                                        "Money protected"
+                                )
+                            }
+                        }
                     }
                 }
                 .frame(
@@ -698,16 +806,8 @@ struct OnboardingView: View {
             )
 
             LazyVGrid(
-                columns: [
-                    GridItem(
-                        .flexible(),
-                        spacing: 11
-                    ),
-                    GridItem(
-                        .flexible(),
-                        spacing: 11
-                    )
-                ],
+                columns:
+                    onboardingColumns,
                 spacing: 11
             ) {
                 ForEach(RescueAction.allCases) {
@@ -809,7 +909,10 @@ struct OnboardingView: View {
                     Image(uiImage: image)
                         .resizable()
                         .scaledToFill()
-                        .frame(height: 380)
+                        .frame(
+                            height:
+                                onboardingPhotoHeight
+                        )
                         .frame(maxWidth: .infinity)
                         .clipped()
                         .overlay {
@@ -929,7 +1032,8 @@ struct OnboardingView: View {
                     }
                     .frame(
                         maxWidth: .infinity,
-                        minHeight: 330
+                        minHeight:
+                            onboardingPickerHeight
                     )
                     .builtCard(padding: 24)
                 }
@@ -1082,19 +1186,14 @@ struct OnboardingView: View {
                     .hasRequestedAuthorization
             )
 
-            if let error = healthKitManager.errorMessage {
-                Text(error)
-                    .font(
-                        .system(
-                            size: 13,
-                            weight: .medium
-                        )
-                    )
-                    .foregroundStyle(
-                        BuiltTheme.danger
-                    )
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
+            if let error =
+                healthKitManager.errorMessage {
+                BuiltStatusCard(
+                    kind: .error,
+                    title:
+                        "Apple Health needs attention",
+                    message: error
+                )
             }
         }
     }
@@ -1157,16 +1256,8 @@ struct OnboardingView: View {
             .builtCard(padding: 22)
 
             LazyVGrid(
-                columns: [
-                    GridItem(
-                        .flexible(),
-                        spacing: 11
-                    ),
-                    GridItem(
-                        .flexible(),
-                        spacing: 11
-                    )
-                ],
+                columns:
+                    onboardingColumns,
                 spacing: 11
             ) {
                 OnboardingMetricTile(
@@ -1365,16 +1456,12 @@ struct OnboardingView: View {
                 Button("Not now") {
                     moveForward()
                 }
-                .font(
-                    .system(
-                        size: 14,
-                        weight: .semibold
-                    )
+                .buttonStyle(
+                    BuiltTertiaryButtonStyle()
                 )
-                .foregroundStyle(
-                    BuiltTheme.textSecondary
+                .accessibilityHint(
+                    "Skips this optional setup step"
                 )
-                .padding(.vertical, 4)
             }
         }
     }
@@ -1534,11 +1621,18 @@ struct OnboardingView: View {
             ) {
                 content()
             }
-            .padding(.horizontal, 20)
+            .padding(
+                .horizontal,
+                BuiltTheme.Spacing
+                    .screenHorizontal
+            )
             .padding(.top, 18)
             .padding(.bottom, 28)
         }
-        .scrollDismissesKeyboard(.interactively)
+        .scrollIndicators(.hidden)
+        .scrollDismissesKeyboard(
+            .interactively
+        )
     }
 
     private func welcomePill(
@@ -1551,10 +1645,8 @@ struct OnboardingView: View {
 
             Text(text)
                 .font(
-                    .system(
-                        size: 10,
-                        weight: .semibold
-                    )
+                    .caption
+                    .weight(.semibold)
                 )
                 .foregroundStyle(
                     BuiltTheme.textSecondary
@@ -1562,7 +1654,11 @@ struct OnboardingView: View {
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 14)
+        .frame(
+            minHeight:
+                BuiltTheme.minimumTapTarget
+        )
+        .padding(.vertical, 8)
         .background(
             Color.white.opacity(0.055),
             in: RoundedRectangle(
@@ -1588,13 +1684,15 @@ struct OnboardingView: View {
     ) -> some View {
         Label(title, systemImage: symbol)
             .font(
-                .system(
-                    size: 15,
-                    weight: .semibold
-                )
+                .headline
+                .weight(.semibold)
             )
             .foregroundStyle(
                 BuiltTheme.textPrimary
+            )
+            .fixedSize(
+                horizontal: false,
+                vertical: true
             )
     }
 
@@ -1660,12 +1758,8 @@ struct OnboardingView: View {
         @ViewBuilder content: () -> Content
     ) -> some View {
         LazyVGrid(
-            columns: [
-                GridItem(
-                    .adaptive(minimum: 118),
-                    spacing: 10
-                )
-            ],
+            columns:
+                onboardingChipColumns,
             alignment: .leading,
             spacing: 10
         ) {
