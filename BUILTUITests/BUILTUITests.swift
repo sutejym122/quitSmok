@@ -1,43 +1,346 @@
-//
-//  BUILTUITests.swift
-//  BUILTUITests
-//
-//  Created by Sutej  Ym  on 7/24/26.
-//
-
 import XCTest
 
-final class BUILTUITests: XCTestCase {
+final class BUILTUISmokeTests:
+    BUILTUITestCase {
+    @MainActor
+    func testFreshInstallCompletesOnboarding()
+        throws {
+        let app =
+            launchBUILT(
+                scenario: .fresh
+            )
 
-    override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
+        assertExists(
+            app.staticTexts[
+                "THIS BODY DOES NOT SMOKE"
+            ],
+            "Fresh launch did not show onboarding."
+        )
 
-        // In UI tests it is usually best to stop immediately when a failure occurs.
-        continueAfterFailure = false
+        tap(
+            app.buttons[
+                "Build my quit plan"
+            ]
+        )
 
-        // In UI tests it’s important to set the initial state - such as interface orientation - required for your tests before they run. The setUp method is a good place to do this.
-    }
+        assertExists(
+            app.staticTexts[
+                "Make the numbers yours."
+            ],
+            "Smoking-pattern onboarding did not open."
+        )
 
-    override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
+        tap(
+            app.buttons["Continue"]
+        )
+
+        assertExists(
+            app.staticTexts[
+                "What are you protecting?"
+            ],
+            "Fitness-identity onboarding did not open."
+        )
+
+        tap(
+            app.buttons["Continue"]
+        )
+
+        assertExists(
+            app.staticTexts[
+                "Make the reason personal."
+            ],
+            "Quit-reason onboarding did not open."
+        )
+
+        tap(
+            app.buttons["Continue"]
+        )
+
+        assertExists(
+            app.staticTexts[
+                "Know what usually pulls you back."
+            ],
+            "Trigger onboarding did not open."
+        )
+
+        tap(
+            app.buttons["Continue"]
+        )
+
+        assertExists(
+            app.staticTexts[
+                "What can you do instead?"
+            ],
+            "Rescue-plan onboarding did not open."
+        )
+
+        tap(
+            app.buttons["Continue"]
+        )
+
+        assertExists(
+            app.staticTexts[
+                "Add the photo that reminds you who you are."
+            ],
+            "Motivation-photo onboarding did not open."
+        )
+
+        tap(
+            app.buttons["Not now"]
+        )
+
+        assertExists(
+            app.staticTexts[
+                "Let training become proof."
+            ],
+            "Apple Health onboarding did not open."
+        )
+
+        tap(
+            app.buttons["Not now"]
+        )
+
+        assertExists(
+            app.staticTexts[
+                "This is bigger than a counter."
+            ],
+            "Personalized-plan onboarding did not open."
+        )
+
+        tap(
+            app.buttons["Enter BUILT"]
+        )
+
+        assertExists(
+            element(
+                "built.screen.today",
+                in: app
+            ),
+            timeout: 12,
+            "Completing onboarding did not open Today."
+        )
+
+        XCTAssertTrue(
+            app.tabBars
+                .buttons["Today"]
+                .exists
+        )
     }
 
     @MainActor
-    func testExample() throws {
-        // UI tests must launch the application that they test.
-        let app = XCUIApplication()
-        app.launch()
+    func testExistingFreeUserLaunchesToday() {
+        let app =
+            launchBUILT(
+                scenario:
+                    .existingFree
+            )
 
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
+        assertExists(
+            element(
+                "built.screen.today",
+                in: app
+            ),
+            "Existing-user launch did not open Today."
+        )
+
+        XCTAssertTrue(
+            app.tabBars
+                .buttons["Today"]
+                .exists
+        )
     }
 
     @MainActor
-    func testLaunchPerformance() throws {
-        if #available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 7.0, *) {
-            // This measures how long it takes to launch your application.
-            measure(metrics: [XCTApplicationLaunchMetric()]) {
-                XCUIApplication().launch()
-            }
+    func testRescueDeepLinkCompletesFreeFlow() {
+        let app =
+            launchBUILT(
+                scenario:
+                    .existingFree,
+                route:
+                    "built://rescue"
+            )
+
+        assertExists(
+            app.staticTexts[
+                "Name the urge."
+            ],
+            timeout: 10,
+            "Rescue deep link did not open the rescue session."
+        )
+
+        tap(
+            app.buttons[
+                "Begin 60-second reset"
+            ]
+        )
+
+        tap(
+            app.buttons[
+                "Skip to actions"
+            ]
+        )
+
+        tap(
+            app.buttons[
+                "I didn’t smoke"
+            ]
+        )
+
+        assertExists(
+            app.staticTexts[
+                "Craving defeated."
+            ],
+            "The successful rescue result did not appear."
+        )
+
+        tap(
+            app.buttons["Done"]
+        )
+
+        assertExists(
+            app.buttons[
+                "Start a 60-second rescue"
+            ],
+            "Closing the rescue session did not return to Rescue."
+        )
+    }
+
+    @MainActor
+    func testFreeUserCanOpenAndClosePaywall() {
+        let app =
+            launchBUILT(
+                scenario:
+                    .existingFree,
+                presentsPaywall:
+                    true
+            )
+
+        let close =
+            app.buttons[
+                "Close BUILT Pro"
+            ]
+
+        assertExists(
+            close,
+            timeout: 10,
+            "The BUILT Pro paywall did not appear."
+        )
+
+        tap(close)
+
+        assertExists(
+            element(
+                "built.screen.today",
+                in: app
+            ),
+            "Closing the paywall did not return to the app."
+        )
+    }
+
+    @MainActor
+    func testSettingsOpensNotificationPreferences() {
+        let app =
+            launchBUILT(
+                scenario:
+                    .existingFree
+            )
+
+        tap(
+            app.buttons[
+                "Open settings"
+            ]
+        )
+
+        assertExists(
+            app.navigationBars[
+                "Settings"
+            ],
+            "Settings did not open."
+        )
+
+        let notifications =
+            element(
+                "built.settings.notifications",
+                in: app
+            )
+
+        for _ in 0..<7
+        where !notifications.isHittable {
+            app.swipeUp()
         }
+
+        tap(notifications)
+
+        assertExists(
+            app.navigationBars[
+                "Notifications"
+            ],
+            "Notification preferences did not open."
+        )
+    }
+
+    @MainActor
+    func testFitnessDeepLinkSelectsFitness() {
+        let app =
+            launchBUILT(
+                scenario:
+                    .existingFree,
+                route:
+                    "built://fitness"
+            )
+
+        assertExists(
+            element(
+                "built.screen.fitness",
+                in: app
+            ),
+            "Fitness deep link did not open Fitness."
+        )
+
+        XCTAssertTrue(
+            app.tabBars
+                .buttons["Fitness"]
+                .exists
+        )
+    }
+
+    @MainActor
+    func testRewardsDeepLinkSelectsGrowthRewards() {
+        let app =
+            launchBUILT(
+                scenario:
+                    .existingFree,
+                route:
+                    "built://rewards"
+            )
+
+        assertExists(
+            element(
+                "built.screen.growth",
+                in: app
+            ),
+            "Rewards deep link did not open Growth."
+        )
+
+        XCTAssertTrue(
+            app.tabBars
+                .buttons["Growth"]
+                .exists
+        )
+
+        let rewardsIsVisible =
+            app.buttons[
+                "Rewards"
+            ]
+            .exists
+            || app.staticTexts[
+                "Rewards"
+            ]
+            .exists
+
+        XCTAssertTrue(
+            rewardsIsVisible,
+            "The Rewards growth section was not selected."
+        )
     }
 }

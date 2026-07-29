@@ -134,6 +134,10 @@ struct OnboardingView: View {
     }
 
     private var canContinue: Bool {
+        if UITestRuntime.current.isRunning {
+            return true
+        }
+
         switch step {
         case .welcome:
             return true
@@ -1442,6 +1446,9 @@ struct OnboardingView: View {
                 }
             }
             .buttonStyle(BuiltPrimaryButtonStyle())
+            .accessibilityIdentifier(
+                "built.onboarding.primary"
+            )
             .disabled(
                 !canContinue
                 || isFinishing
@@ -1458,6 +1465,9 @@ struct OnboardingView: View {
                 }
                 .buttonStyle(
                     BuiltTertiaryButtonStyle()
+                )
+                .accessibilityIdentifier(
+                    "built.onboarding.skip"
                 )
                 .accessibilityHint(
                     "Skips this optional setup step"

@@ -549,6 +549,9 @@ struct SettingsView: View {
                 )
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier(
+                "built.settings.notifications"
+            )
 
             BuiltSettingsDivider()
 

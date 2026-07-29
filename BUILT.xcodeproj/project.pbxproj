@@ -10,7 +10,6 @@
 		4E6CEE9F301403A3000B94DF /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4E6CEE9E301403A3000B94DF /* WidgetKit.framework */; };
 		4E6CEEA1301403A3000B94DF /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4E6CEEA0301403A3000B94DF /* SwiftUI.framework */; };
 		4E6CEEB0301403A4000B94DF /* BUILTWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4E6CEE9C301403A3000B94DF /* BUILTWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		4E89B0AD3017DC1500061BF3 /* Products.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 4E89B0AC3017DC1500061BF3 /* Products.storekit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -57,6 +56,8 @@
 		4E6CEEA0301403A3000B94DF /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		4E6CEEB73014054F000B94DF /* BUILTWidgetsExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BUILTWidgetsExtension.entitlements; sourceTree = "<group>"; };
 		4E89B0AC3017DC1500061BF3 /* Products.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Products.storekit; sourceTree = "<group>"; };
+		4E89B1B0301944A200061BF3 /* BUILT Unit Tests.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = "BUILT Unit Tests.xctestplan"; sourceTree = "<group>"; };
+		950BA7F762C9EB1766B18ABE /* BUILT UI Tests.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = "BUILT UI Tests.xctestplan"; sourceTree = "<group>"; };
 		4ED0DBAF3013F3FE00C9EF74 /* BUILT.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BUILT.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4ED0DBBF3013F3FF00C9EF74 /* BUILTTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BUILTTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		4ED0DBC93013F3FF00C9EF74 /* BUILTUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BUILTUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -165,6 +166,8 @@
 		4ED0DBA63013F3FE00C9EF74 = {
 			isa = PBXGroup;
 			children = (
+				4E89B1B0301944A200061BF3 /* BUILT Unit Tests.xctestplan */,
+				950BA7F762C9EB1766B18ABE /* BUILT UI Tests.xctestplan */,
 				4E89B0AC3017DC1500061BF3 /* Products.storekit */,
 				4E6CEEB73014054F000B94DF /* BUILTWidgetsExtension.entitlements */,
 				4ED0DBB13013F3FE00C9EF74 /* BUILT */,
@@ -342,7 +345,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4E89B0AD3017DC1500061BF3 /* Products.storekit in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -520,7 +522,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -577,7 +579,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -663,7 +665,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 9AQ8K6YSLK;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.sutej.BUILTTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -682,7 +684,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 9AQ8K6YSLK;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.sutej.BUILTTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";

@@ -1,33 +1,49 @@
-//
-//  BUILTUITestsLaunchTests.swift
-//  BUILTUITests
-//
-//  Created by Sutej  Ym  on 7/24/26.
-//
-
 import XCTest
 
-final class BUILTUITestsLaunchTests: XCTestCase {
-
-    override class var runsForEachTargetApplicationUIConfiguration: Bool {
-        true
-    }
-
-    override func setUpWithError() throws {
-        continueAfterFailure = false
-    }
-
+final class BUILTUILaunchPerformanceTests:
+    BUILTUITestCase {
     @MainActor
-    func testLaunch() throws {
-        let app = XCUIApplication()
-        app.launch()
+    func testExistingUserLaunchPerformance() {
+        let app =
+            XCUIApplication()
 
-        // Insert steps here to perform after app launch but before taking a screenshot,
-        // such as logging into a test account or navigating somewhere in the app
+        app.launchArguments = [
+            "--built-ui-testing",
+            "--built-ui-scenario=existing-free",
+            "-AppleLanguages",
+            "(en)",
+            "-AppleLocale",
+            "en_US"
+        ]
 
-        let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = "Launch Screen"
-        attachment.lifetime = .keepAlways
-        add(attachment)
+        let options =
+            XCTMeasureOptions()
+
+        options.iterationCount = 3
+
+        measure(
+            metrics: [
+                XCTApplicationLaunchMetric(
+                    waitUntilResponsive:
+                        true
+                )
+            ],
+            options: options
+        ) {
+            app.launch()
+
+            XCTAssertTrue(
+                app.descendants(
+                    matching: .any
+                )[
+                    "built.screen.today"
+                ]
+                .waitForExistence(
+                    timeout: 12
+                )
+            )
+
+            app.terminate()
+        }
     }
 }
