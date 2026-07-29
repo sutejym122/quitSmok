@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 @main
 struct BUILTApp: App {
@@ -9,21 +10,70 @@ struct BUILTApp: App {
     private var appDelegate
 
     @StateObject
-    private var storeManager =
-        StoreManager()
+    private var storeManager:
+        StoreManager
 
     private let modelContainer:
         ModelContainer
 
+    private let uiTestRuntime:
+        UITestRuntime
+
     init() {
+        let runtime =
+            UITestRuntime.current
+
+        uiTestRuntime = runtime
+
+        let defaults =
+            UserDefaults.standard
+
+        if let entitlement =
+            runtime
+                .proEntitlementOverride {
+            EntitlementCache(
+                defaults: defaults
+            )
+            .save(entitlement)
+        }
+
+        _storeManager =
+            StateObject(
+                wrappedValue:
+                    StoreManager(
+                        defaults:
+                            defaults,
+                        automaticallyPrepares:
+                            !runtime
+                                .isRunning,
+                        observesTransactionUpdates:
+                            !runtime
+                                .isRunning
+                    )
+            )
+
         do {
-            modelContainer =
+            let container =
                 try AppModelContainerFactory
-                    .make()
+                    .make(
+                        inMemory:
+                            runtime
+                                .usesInMemoryStore
+                    )
+
+            try runtime.seed(
+                modelContainer:
+                    container
+            )
+
+            modelContainer =
+                container
 
             AppDiagnostics
                 .recordModelContainerReady(
-                    inMemory: false
+                    inMemory:
+                        runtime
+                            .usesInMemoryStore
                 )
         } catch {
             AppDiagnostics
@@ -33,6 +83,12 @@ struct BUILTApp: App {
 
             fatalError(
                 "Unable to create SwiftData container: \(error)"
+            )
+        }
+
+        if runtime.isRunning {
+            UIView.setAnimationsEnabled(
+                false
             )
         }
     }
@@ -46,6 +102,22 @@ struct BUILTApp: App {
                 .environmentObject(
                     storeManager
                 )
+                .transaction {
+                    transaction in
+
+                    guard
+                        uiTestRuntime
+                            .isRunning
+                    else {
+                        return
+                    }
+
+                    transaction.animation =
+                        nil
+                    transaction
+                        .disablesAnimations =
+                        true
+                }
         }
         .modelContainer(modelContainer)
     }

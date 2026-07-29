@@ -8,3 +8,9 @@ xcuserdata/
 .derivedData-tests/
 
 TestResults/
+
+# Milestone 6A.3 UI and release preflight artifacts
+.derivedData-ui-tests/
+.derivedData-release/
+UITestResults/
+ReleasePreflight/

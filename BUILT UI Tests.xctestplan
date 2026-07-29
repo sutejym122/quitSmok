@@ -1,0 +1,23 @@
+{
+  "configurations": [
+    {
+      "id": "A6A30000-6A30-4A63-8A30-A6A300006A30",
+      "name": "Smoke and Performance",
+      "options": {}
+    }
+  ],
+  "defaultOptions": {
+    "testTimeoutsEnabled": true
+  },
+  "testTargets": [
+    {
+      "parallelizable": false,
+      "target": {
+        "containerPath": "container:BUILT.xcodeproj",
+        "identifier": "4ED0DBC83013F3FF00C9EF74",
+        "name": "BUILTUITests"
+      }
+    }
+  ],
+  "version": 1
+}

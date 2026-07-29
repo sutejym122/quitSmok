@@ -129,7 +129,7 @@ xcrun simctl bootstatus \
     -b
 
 RESULT_DIRECTORY="$ROOT/TestResults"
-DERIVED_DATA="$ROOT/.derivedData-tests"
+DERIVED_DATA="$HOME/Library/Developer/Xcode/DerivedData/BUILT-CLI-UnitTests"
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 RESULT_BUNDLE="$RESULT_DIRECTORY/BUILTTests-$TIMESTAMP.xcresult"
 LOG_FILE="$RESULT_DIRECTORY/BUILTTests-$TIMESTAMP.log"

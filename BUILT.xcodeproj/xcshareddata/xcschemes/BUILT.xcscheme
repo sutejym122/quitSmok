@@ -31,6 +31,16 @@
                reference = "container:BUILT Unit Tests.xctestplan">
             </TestPlanReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "YES">
+            <TestPlanReference
+               reference = "container:BUILT UI Tests.xctestplan">
+            </TestPlanReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction
@@ -40,7 +50,11 @@
       shouldUseLaunchSchemeArgsEnv = "YES">
       <TestPlans>
          <TestPlanReference
-            reference = "container:BUILT Unit Tests.xctestplan">
+            reference = "container:BUILT Unit Tests.xctestplan"
+            default = "YES">
+         </TestPlanReference>
+         <TestPlanReference
+            reference = "container:BUILT UI Tests.xctestplan">
          </TestPlanReference>
       </TestPlans>
    </TestAction>
