@@ -1012,6 +1012,7 @@ struct SettingsView: View {
         profile.quitDate = .now
         profile.slipCount += 1
         RecoveryCelebrationStore.reset()
+        BuiltPlanProgressStore.reset()
 
         guard saveChanges() else {
             profile.quitDate = oldDate

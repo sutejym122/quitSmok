@@ -16,7 +16,7 @@ BUILD_LOG="$RESULTS_DIR/BUILT-Release-Build.log"
 mkdir -p "$RESULTS_DIR"
 rm -rf "$UI_RESULT"
 
-echo "1/3 Running the 58 unit tests..."
+echo "1/3 Running the 67 unit tests..."
 "$ROOT/Scripts/run_unit_tests.sh"
 
 echo "2/3 Running UI smoke and launch-performance tests..."

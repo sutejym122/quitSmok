@@ -106,6 +106,8 @@ struct UITestRuntime {
             return
         }
 
+        BuiltPlanProgressStore.reset()
+
         switch scenario {
         case .fresh:
             return

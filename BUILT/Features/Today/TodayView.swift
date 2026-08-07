@@ -4,6 +4,10 @@ import SwiftData
 struct TodayView: View {
     let profile: QuitProfile
 
+    @EnvironmentObject
+    private var storeManager:
+        StoreManager
+
     @Query(
         sort: \MotivationPhoto.createdAt,
         order: .reverse
@@ -21,6 +25,17 @@ struct TodayView: View {
 
     @State private var showingSettings =
         false
+
+    @State private var showingPlan =
+        false
+
+    @State private var planProgress =
+        BuiltPlanProgressStore
+            .loadOrCreate(
+                preferences:
+                    OnboardingPreferencesStore
+                        .load()
+            )
 
     @Environment(\.dynamicTypeSize)
     private var dynamicTypeSize
@@ -90,6 +105,8 @@ struct TodayView: View {
 
                             cravingButton
 
+                            planCard
+
                             metricsGrid(
                                 metrics: metrics
                             )
@@ -125,6 +142,17 @@ struct TodayView: View {
             SettingsView(
                 profile: profile
             )
+        }
+        .sheet(
+            isPresented: $showingPlan,
+            onDismiss: {
+                refreshPlanProgress()
+            }
+        ) {
+            BuiltPlanView()
+                .environmentObject(
+                    storeManager
+                )
         }
     }
 
@@ -378,6 +406,25 @@ struct TodayView: View {
                     : "\(profile.slipCount) recorded slip\(profile.slipCount == 1 ? "" : "s")"
             )
         }
+    }
+
+    private var planCard: some View {
+        BuiltPlanTodayCard(
+            progress: planProgress,
+            hasPro: storeManager.hasPro
+        ) {
+            showingPlan = true
+        }
+    }
+
+    private func refreshPlanProgress() {
+        planProgress =
+            BuiltPlanProgressStore
+                .loadOrCreate(
+                    preferences:
+                        OnboardingPreferencesStore
+                            .load()
+                )
     }
 
     private var identityCard: some View {
