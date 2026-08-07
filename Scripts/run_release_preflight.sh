@@ -16,10 +16,10 @@ BUILD_LOG="$RESULTS_DIR/BUILT-Release-Build.log"
 mkdir -p "$RESULTS_DIR"
 rm -rf "$UI_RESULT"
 
-echo "1/3 Running the 50 unit tests..."
+echo "1/3 Running the 67 unit tests..."
 "$ROOT/Scripts/run_unit_tests.sh"
 
-echo "2/3 Running UI smoke and launch-performance tests..."
+echo "2/3 Running 11 UI smoke and launch-performance tests..."
 
 set -o pipefail
 

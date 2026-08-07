@@ -343,4 +343,237 @@ final class BUILTUISmokeTests:
             "The Rewards growth section was not selected."
         )
     }
+
+    @MainActor
+    func testFreeUserCanTryDayOneThenReachPlanPaywall() {
+        let app =
+            launchBUILT(
+                scenario:
+                    .existingFree
+            )
+
+        tap(
+            element(
+                "built.today.plan",
+                in: app
+            )
+        )
+
+        assertExists(
+            element(
+                "built.screen.plan",
+                in: app
+            ),
+            "The personalized BUILT Plan did not open."
+        )
+
+        assertExists(
+            app.staticTexts["DAY 1"],
+            "The free first mission was not visible."
+        )
+
+        scrollToAndTap(
+            app.buttons[
+                "Complete Day 1"
+            ],
+            in: app
+        )
+
+        assertExists(
+            app.buttons[
+                "Unlock Days 2–7"
+            ],
+            "Completing free Day 1 did not expose the full-plan upgrade."
+        )
+
+        scrollToAndTap(
+            app.buttons[
+                "Unlock Days 2–7"
+            ],
+            in: app,
+            scrollDown: true
+        )
+
+        assertExists(
+            app.buttons[
+                "Close BUILT Pro"
+            ],
+            timeout: 10,
+            "The full-plan upgrade did not open BUILT Pro."
+        )
+
+        assertExists(
+            app.staticTexts[
+                "YOUR BUILT PLAN"
+            ],
+            "The Plan-specific Pro paywall eyebrow was not visible."
+        )
+
+        assertExists(
+            app.staticTexts[
+                "Keep building past Day 1."
+            ],
+            "The Plan-specific Pro paywall title was not visible."
+        )
+    }
+
+    @MainActor
+    func testProUserAdvancesFromDayOneToDayTwo() {
+        let app =
+            launchBUILT(
+                scenario:
+                    .existingPro
+            )
+
+        tap(
+            element(
+                "built.today.plan",
+                in: app
+            )
+        )
+
+        assertExists(
+            element(
+                "built.screen.plan",
+                in: app
+            ),
+            "The personalized BUILT Plan did not open for Pro."
+        )
+
+        scrollToAndTap(
+            app.buttons[
+                "Complete Day 1"
+            ],
+            in: app
+        )
+
+        assertExists(
+            app.staticTexts["DAY 2"],
+            "Completing Day 1 did not reveal Day 2."
+        )
+
+        assertExists(
+            app.buttons[
+                "Complete Day 2"
+            ],
+            "Day 2 did not become actionable for the Pro user."
+        )
+    }
+
+
+    @MainActor
+    func testCompletingDaySevenCelebratesAndPersistsFinishedPlan() {
+        let app =
+            launchBUILT(
+                scenario:
+                    .planDaySeven
+            )
+
+        tap(
+            element(
+                "built.today.plan",
+                in: app
+            )
+        )
+
+        assertExists(
+            element(
+                "built.screen.plan",
+                in: app
+            ),
+            "The Day 7 BUILT Plan did not open."
+        )
+
+        assertExists(
+            app.staticTexts[
+                "DAY 7"
+            ],
+            "The seeded plan was not ready for Day 7."
+        )
+
+        scrollToAndTap(
+            app.buttons[
+                "Complete Day 7"
+            ],
+            in: app
+        )
+
+        assertExists(
+            element(
+                "built.celebration.plan-first-week-complete",
+                in: app
+            ),
+            timeout: 10,
+            "Completing Day 7 did not present the first-week celebration."
+        )
+
+        tap(
+            element(
+                "built.celebration.dismiss",
+                in: app
+            )
+        )
+
+        assertExists(
+            app.staticTexts[
+                "The plan is complete. Keep the behaviors that earned this proof."
+            ],
+            "The Plan did not enter its completed state."
+        )
+
+        tap(
+            app.buttons[
+                "Close"
+            ]
+        )
+
+        assertExists(
+            element(
+                "built.today.plan",
+                in: app
+            ),
+            "The completed Plan proof card disappeared from Today."
+        )
+
+        assertExists(
+            app.staticTexts[
+                "FIRST WEEK BUILT"
+            ],
+            "The completed Plan did not switch to its compact Today proof state."
+        )
+
+        assertExists(
+            app.staticTexts[
+                "7 of 7 missions complete"
+            ],
+            "The completed Today card did not show final Plan progress."
+        )
+
+        tap(
+            element(
+                "built.today.plan",
+                in: app
+            )
+        )
+
+        assertExists(
+            element(
+                "built.screen.plan",
+                in: app
+            ),
+            "The completed Plan could not be reopened."
+        )
+
+        XCTAssertFalse(
+            element(
+                "built.celebration.plan-first-week-complete",
+                in: app
+            )
+            .waitForExistence(
+                timeout: 1
+            ),
+            "Reopening a completed Plan replayed the Day 7 celebration."
+        )
+    }
+
 }

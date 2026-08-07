@@ -7,6 +7,8 @@ enum BUILTUITestScenario:
         "existing-free"
     case existingPro =
         "existing-pro"
+    case planDaySeven =
+        "plan-day-seven"
 }
 
 class BUILTUITestCase:
@@ -129,6 +131,46 @@ class BUILTUITestCase:
             file: file,
             line: line
         )
+    }
+
+    @MainActor
+    func scrollToAndTap(
+        _ element: XCUIElement,
+        in app: XCUIApplication,
+        maxSwipes: Int = 6,
+        scrollDown: Bool = false,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        for _ in 0..<maxSwipes {
+            if element.exists &&
+                element.isHittable {
+                element.tap()
+                return
+            }
+
+            if scrollDown {
+                app.swipeDown()
+            } else {
+                app.swipeUp()
+            }
+        }
+
+        XCTAssertTrue(
+            element.exists,
+            "Expected element was not available after scrolling.",
+            file: file,
+            line: line
+        )
+
+        XCTAssertTrue(
+            element.isHittable,
+            "Expected element was visible but not hittable after scrolling.",
+            file: file,
+            line: line
+        )
+
+        element.tap()
     }
 
     @MainActor
