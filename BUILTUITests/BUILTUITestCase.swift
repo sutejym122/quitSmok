@@ -7,6 +7,8 @@ enum BUILTUITestScenario:
         "existing-free"
     case existingPro =
         "existing-pro"
+    case planDaySeven =
+        "plan-day-seven"
 }
 
 class BUILTUITestCase:

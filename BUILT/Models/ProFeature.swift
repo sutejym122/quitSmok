@@ -1,6 +1,7 @@
 import Foundation
 
 enum ProFeature: String, CaseIterable, Identifiable, Sendable {
+    case personalizedPlan
     case unlimitedMotivationPhotos
     case fitnessIntelligence
     case advancedTriggerPatterns
@@ -17,6 +18,8 @@ enum ProFeature: String, CaseIterable, Identifiable, Sendable {
 
     var title: String {
         switch self {
+        case .personalizedPlan:
+            return "Complete personalized BUILT Plan"
         case .unlimitedMotivationPhotos:
             return "Unlimited motivation photos"
         case .fitnessIntelligence:
@@ -40,6 +43,8 @@ enum ProFeature: String, CaseIterable, Identifiable, Sendable {
 
     var detail: String {
         switch self {
+        case .personalizedPlan:
+            return "Continue beyond your free first mission with six more personalized steps built around your triggers, replacements, identity, and reasons for quitting."
         case .unlimitedMotivationPhotos:
             return "Build a private physique and identity vault without photo limits."
         case .fitnessIntelligence:
@@ -63,6 +68,8 @@ enum ProFeature: String, CaseIterable, Identifiable, Sendable {
 
     var symbolName: String {
         switch self {
+        case .personalizedPlan:
+            return "checklist.checked"
         case .unlimitedMotivationPhotos:
             return "photo.stack.fill"
         case .fitnessIntelligence:
@@ -93,6 +100,7 @@ enum PaywallContext: String, Identifiable, Sendable {
     case rewardGoals
     case recovery
     case widgets
+    case plan
     case general
 
     var id: String {
@@ -115,6 +123,8 @@ enum PaywallContext: String, Identifiable, Sendable {
             return "RECOVERY JOURNEY"
         case .widgets:
             return "SYSTEM PRESENCE"
+        case .plan:
+            return "YOUR BUILT PLAN"
         }
     }
 
@@ -134,6 +144,8 @@ enum PaywallContext: String, Identifiable, Sendable {
             return "See the complete rebuild."
         case .widgets:
             return "Keep your progress in sight."
+        case .plan:
+            return "Keep building past Day 1."
         }
     }
 
@@ -153,6 +165,8 @@ enum PaywallContext: String, Identifiable, Sendable {
             return "Follow the evidence-based recovery journey from the first minutes through long-term milestones."
         case .widgets:
             return "Unlock richer Home Screen and Lock Screen progress experiences."
+        case .plan:
+            return "Day 1 is yours. Unlock the remaining six personalized missions and keep moving through the plan built around you."
         }
     }
 
@@ -206,8 +220,17 @@ enum PaywallContext: String, Identifiable, Sendable {
                 .premiumThemes
             ]
 
+        case .plan:
+            return [
+                .personalizedPlan,
+                .advancedTriggerPatterns,
+                .fitnessIntelligence,
+                .customReminders
+            ]
+
         case .settings, .general:
             return [
+                .personalizedPlan,
                 .unlimitedMotivationPhotos,
                 .fitnessIntelligence,
                 .advancedTriggerPatterns,

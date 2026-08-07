@@ -10,6 +10,8 @@ struct UITestRuntime {
             "existing-free"
         case existingPro =
             "existing-pro"
+        case planDaySeven =
+            "plan-day-seven"
     }
 
     static let current =
@@ -35,7 +37,8 @@ struct UITestRuntime {
              .existingFree:
             return false
 
-        case .existingPro:
+        case .existingPro,
+             .planDaySeven:
             return true
         }
     }
@@ -113,7 +116,8 @@ struct UITestRuntime {
             return
 
         case .existingFree,
-             .existingPro:
+             .existingPro,
+             .planDaySeven:
             let profile =
                 QuitProfile(
                     quitDate:
@@ -139,6 +143,46 @@ struct UITestRuntime {
             try modelContainer
                 .mainContext
                 .save()
+
+            if scenario ==
+                .planDaySeven {
+                let preferences =
+                    OnboardingPreferencesStore
+                        .load()
+
+                var progress =
+                    BuiltPlanProgress(
+                        plan:
+                            BuiltPlanEngine
+                                .makePlan(
+                                    preferences:
+                                        preferences,
+                                    generatedAt:
+                                        Date(
+                                            timeIntervalSince1970:
+                                                1_700_000_000
+                                        )
+                                )
+                    )
+
+                for dayNumber in 1...6 {
+                    progress.complete(
+                        dayNumber:
+                            dayNumber,
+                        at:
+                            Date(
+                                timeIntervalSince1970:
+                                    1_700_000_000
+                                    + Double(
+                                        dayNumber
+                                    )
+                            )
+                    )
+                }
+
+                BuiltPlanProgressStore
+                    .save(progress)
+            }
         }
     }
 

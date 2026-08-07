@@ -7,6 +7,7 @@ struct CelebrationMoment:
     enum Kind: Equatable {
         case recovery
         case reward
+        case plan
     }
 
     let id: String
@@ -31,6 +32,19 @@ struct CelebrationMoment:
                 milestone.title,
             symbolName:
                 milestone.symbolName
+        )
+    }
+
+    static func planCompletion()
+        -> CelebrationMoment {
+        CelebrationMoment(
+            id: "plan-first-week-complete",
+            kind: .plan,
+            eyebrow: "FIRST WEEK BUILT",
+            title: "Seven missions. Done.",
+            message:
+                "You finished the plan you started. Keep the decisions that worked and carry them forward.",
+            symbolName: "checkmark.seal.fill"
         )
     }
 
@@ -135,6 +149,9 @@ struct CelebrationOverlay: View {
         }
         .accessibilityElement(
             children: .contain
+        )
+        .accessibilityIdentifier(
+            "built.celebration.\(moment.id)"
         )
     }
 
@@ -281,6 +298,9 @@ struct CelebrationOverlay: View {
         }
         .buttonStyle(
             BuiltPrimaryButtonStyle()
+        )
+        .accessibilityIdentifier(
+            "built.celebration.dismiss"
         )
         .accessibilityHint(
             "Dismisses this celebration"

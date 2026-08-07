@@ -47,7 +47,10 @@ struct BuiltPlanTodayCard: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(
+            if progress.isFinished {
+                completedTodayCard
+            } else {
+                VStack(
                 alignment: .leading,
                 spacing: BuiltTheme.Spacing.medium
             ) {
@@ -68,6 +71,7 @@ struct BuiltPlanTodayCard: View {
                     Spacer()
 
                     if !hasPro,
+                       progress.completedCount >= 1,
                        !progress.isFinished {
                         ProBadge(compact: true)
                     }
@@ -132,14 +136,102 @@ struct BuiltPlanTodayCard: View {
                 alignment: .leading
             )
             .builtCard(padding: 20)
+            }
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(
             "built.today.plan"
         )
         .accessibilityHint(
-            "Opens your personalized seven-day quit plan"
+            progress.isFinished
+            ? "Reviews your completed personalized plan"
+            : "Opens your personalized seven-day quit plan"
         )
+    }
+
+    private var completedTodayCard: some View {
+        HStack(
+            alignment: .center,
+            spacing: BuiltTheme.Spacing.medium
+        ) {
+            ZStack {
+                Circle()
+                    .fill(
+                        BuiltTheme.accent
+                            .opacity(0.14)
+                    )
+                    .frame(
+                        width: 44,
+                        height: 44
+                    )
+
+                Image(
+                    systemName:
+                        "checkmark.seal.fill"
+                )
+                .font(
+                    .system(
+                        size: 19,
+                        weight: .semibold
+                    )
+                )
+                .foregroundStyle(
+                    BuiltTheme.accent
+                )
+            }
+            .accessibilityHidden(true)
+
+            VStack(
+                alignment: .leading,
+                spacing: BuiltTheme.Spacing.xSmall
+            ) {
+                Text("FIRST WEEK BUILT")
+                    .font(
+                        .caption
+                        .weight(.bold)
+                    )
+                    .tracking(1.2)
+                    .foregroundStyle(
+                        BuiltTheme.accent
+                    )
+
+                Text(
+                    "\(progress.completedCount) of \(progress.plan.durationDays) missions complete"
+                )
+                .font(
+                    .subheadline
+                    .weight(.semibold)
+                )
+                .foregroundStyle(
+                    BuiltTheme.textPrimary
+                )
+
+                Text("Review what worked")
+                    .font(.footnote)
+                    .foregroundStyle(
+                        BuiltTheme.textSecondary
+                    )
+            }
+
+            Spacer(minLength: 8)
+
+            Image(
+                systemName: "chevron.right"
+            )
+            .font(
+                .footnote
+                .weight(.bold)
+            )
+            .foregroundStyle(
+                BuiltTheme.accent
+            )
+            .accessibilityHidden(true)
+        }
+        .frame(
+            maxWidth: .infinity,
+            alignment: .leading
+        )
+        .builtCard(padding: 18)
     }
 }
 
@@ -155,6 +247,9 @@ struct BuiltPlanView: View {
 
     @State private var paywallContext:
         PaywallContext?
+
+    @State private var celebrationMoment:
+        CelebrationMoment?
 
     init() {
         let preferences =
@@ -179,8 +274,9 @@ struct BuiltPlanView: View {
             ZStack {
                 AmbientBackground()
 
-                ScrollView {
-                    VStack(
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(
                         alignment: .leading,
                         spacing:
                             BuiltTheme.Spacing.xLarge
@@ -191,6 +287,9 @@ struct BuiltPlanView: View {
                             progress.plan.missions
                         ) { mission in
                             missionCard(mission)
+                                .id(
+                                    mission.dayNumber
+                                )
                         }
 
                         if !storeManager.hasPro,
@@ -209,8 +308,46 @@ struct BuiltPlanView: View {
                     )
                     .padding(.top, 12)
                     .padding(.bottom, 40)
+                    }
+                    .scrollIndicators(.hidden)
+                    .onChange(
+                        of:
+                            progress.completedCount
+                    ) {
+                        oldCount,
+                        newCount in
+
+                        guard
+                            newCount > oldCount,
+                            let nextDayNumber =
+                                progress
+                                    .nextDayNumber
+                        else {
+                            return
+                        }
+
+                        withAnimation(
+                            BuiltTheme
+                                .Motion
+                                .standard
+                        ) {
+                            proxy.scrollTo(
+                                nextDayNumber,
+                                anchor: .center
+                            )
+                        }
+                    }
                 }
-                .scrollIndicators(.hidden)
+
+                if let celebrationMoment {
+                    CelebrationOverlay(
+                        moment: celebrationMoment
+                    ) {
+                        self.celebrationMoment =
+                            nil
+                    }
+                    .zIndex(30)
+                }
             }
             .navigationTitle("Your BUILT Plan")
             .navigationBarTitleDisplayMode(.inline)
@@ -598,7 +735,7 @@ struct BuiltPlanView: View {
 
                 Button {
                     paywallContext =
-                        .general
+                        .plan
                 } label: {
                     HStack {
                         Image(
@@ -701,10 +838,10 @@ struct BuiltPlanView: View {
             message:
                 "Day 1 is free. BUILT Pro unlocks the remaining six personalized missions with one lifetime purchase.",
             feature:
-                .advancedTriggerPatterns
+                .personalizedPlan
         ) {
             paywallContext =
-                .general
+                .plan
         }
     }
 
@@ -765,6 +902,9 @@ struct BuiltPlanView: View {
             return
         }
 
+        let wasFinished =
+            progress.isFinished
+
         progress.complete(
             dayNumber: mission.dayNumber
         )
@@ -772,5 +912,13 @@ struct BuiltPlanView: View {
         BuiltPlanProgressStore.save(
             progress
         )
+
+        if !wasFinished,
+           progress.isFinished,
+           mission.dayNumber ==
+                progress.plan.durationDays {
+            celebrationMoment =
+                .planCompletion()
+        }
     }
 }
